@@ -1,0 +1,4 @@
+# don't commit test data (user-dependent)
+*
+# but keep this file so users know where to put sprites
+!.gitignore
