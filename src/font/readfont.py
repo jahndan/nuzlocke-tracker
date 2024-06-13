@@ -17,8 +17,9 @@ def process_palette(im: Image, recolor=""):
     npal = pal.copy()
     [x.append(255) for x in npal]  # modifies npal through side effects
     # swapping colors as desired
-    npal[-1] = [0, 0, 0, 0]  # green --> zero vector
-    npal[-2] = [16, 16, 16, 0]  # black --> nonzero vector but still transparent
+    npal[4] = [0, 0, 0, 0]  # green --> zero vector
+    npal[0] = [255, 255, 255, 0]  # white --> nonzero vector but still transparent
+    npal[3] = [15, 15, 15, 0]  # black --> nonzero vector but still transparent
     return npal
 
 
@@ -107,18 +108,20 @@ def export_files(chars: dict, exports=None):
 
 
 if __name__ == "__main__":
-    filename = "font/data_00000000.font.png"
-    print(f"Processing {filename}:")
+    filename = "src/font/data_00000000.font.png"
+    print(f"Processing: {filename}")
     img = Image.open(filename)
     palette = process_palette(img)
     imarr = substitute_colors(numpy.array(img), palette)
     chars = process_font(imarr, normal_fontmap)
     export_files(chars)
+    print(f"Finished processing: {filename}")
 
-    filename = "font/data_00000002.font.png"
-    print(f"Processing {filename}:")
+    filename = "src/font/data_00000002.font.png"
+    print(f"Processing: {filename}")
     img = Image.open(filename)
     # palette = process_palette(img)  # same palette used in all data files
     imarr = substitute_colors(numpy.array(img), palette)
     chars = process_font(imarr, bold_fontmap)
     export_files(chars)
+    print(f"Finished processing: {filename}.")
