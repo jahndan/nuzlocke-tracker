@@ -8,6 +8,7 @@ mss = "*"
 opencv-python = "*"
 numpy = "*"
 pillow = "*"
+bidict = "*"
 
 [dev-packages]
 
