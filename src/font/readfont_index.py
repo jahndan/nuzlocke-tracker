@@ -608,10 +608,11 @@ data_0 = [
             "",
             "",
             "",
+            # new characters added in platinum
+            "",  # degree symbol?
+            "",  # underscore?
+            "",  # wide underscore?
             # no more character data below
-            None,
-            None,
-            None,
             None,
             None,
             None,
