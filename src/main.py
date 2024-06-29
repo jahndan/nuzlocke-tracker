@@ -28,6 +28,8 @@ def imload(filepath):
 
 
 if __name__ == "__main__":
+    ## TODO replace this with a more flexible way of passing args than sys.argv
+    ## also allow user to specify language (currently only English supported)
     # get all necessary args if given
     try:
         width, height = int(sys.argv[1]), int(sys.argv[2])
@@ -47,9 +49,11 @@ if __name__ == "__main__":
     else:
         sct = mss()
         bounding_box = {"width": width, "height": height, "left": left, "top": top}
-        confidence = 0.99
-        limit = 10000
+        confidence = 0.99  # to be manually tuned
+        limit = 10000  # should be irrelevant soon
 
+        ## TODO replace this single-image loading with loading of many chars into
+        ## a format more suitable for the model stuff
         # read image with alpha channel
         sprite = imload("sprites/test.png")
         # split alpha channel to mask, keep rgb in sprite
@@ -62,6 +66,9 @@ if __name__ == "__main__":
             res = opencv.resize(
                 img, None, fx=scale, fy=scale, interpolation=opencv.INTER_NEAREST
             )
+
+            # model.process(res)  # with all of its side-effects
+            ## TODO end of loop (rest of this was for testing purposes)
 
             # result = opencv.matchTemplate(res, sprite, opencv.TM_CCOEFF_NORMED)
             result = opencv.matchTemplate(
