@@ -134,3 +134,4 @@ if __name__ == "__main__":
     chars = process_font(numpy.array(img), bold_namemap)
     export_files(chars, bold_namemap.values())
     print(f"Finished processing: {filename}.")
+
