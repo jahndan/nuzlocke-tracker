@@ -573,7 +573,7 @@ data_0 = [
             "en.diamond",
             # miscellaneous shapes
             "en.star",  # 5 point star
-            "en.target",  # might be coins
+            "en.coin",
             "en.circle",
             "en.square",
             "en.triangle",
@@ -582,7 +582,7 @@ data_0 = [
             "en.address",  # at symbol @
         ],
         [
-            "en.note",  # musical note
+            "en.music",  # musical note
             "en.percent",
             "",
             "",
@@ -598,10 +598,11 @@ data_0 = [
             "",
             "",
             "",
-            "en.poke",  # PK
+            # two character abbreviation for pokemon
+            "en.pkmn_pk",
         ],
         [
-            "en.mon",  # MN
+            "en.pkmn_mn",
             # more whitespace
             "",
             "",
