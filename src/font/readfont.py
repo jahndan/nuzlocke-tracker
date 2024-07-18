@@ -4,7 +4,14 @@ import cv2 as opencv
 from bidict import bidict
 from readfont_index import normal_namemap, bold_namemap
 
+### this is the base_palette:
+# 0 : green (not content)
+# 1 : white (background)
+# 2 : light grey (text color 1)
+# 3 : dark grey (text color 2)
+# 4 : black (text color 3, for bold only)
 
+# TODO remove this part entirely (except maybe to reshuffle the palette)
 def process_palette(im: Image, bold: bool):
     """reads, reformats, and modifies the built-in palette to be usable"""
     raw = im.getpalette()  # flattened rgb triple array
@@ -14,13 +21,13 @@ def process_palette(im: Image, bold: bool):
         for i in range(len(raw) // 3)
     ]
     # replace with bgra quadruples, i.e. add alpha channel
-    npal = [color + [255] for color in pal]
+    npal = [color + [0xFF] for color in pal]
     # map green to the zero vector because it is not part of content
-    npal[4] = [0, 0, 0, 0]
+    npal[4] = [0x00, 0x00, 0x00, 0x00]
     # map white to zero alpha because it is part of content but transparent
-    npal[0] = [255, 255, 255, 0]
+    npal[0] = [0xFF, 0xFF, 0xFF, 0x00]
     # non-bold: map black to zero alpha like white (bold uses black for nontransparent color)
-    npal[3] = [15, 15, 15, 255] if bold else [255, 255, 255, 0]
+    npal[3] = [0x0F, 0x0F, 0x0F, 0xFF] if bold else [0xFF, 0xFF, 0xFF, 0x00]
     return npal
 
 
