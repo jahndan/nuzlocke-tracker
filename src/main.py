@@ -2,18 +2,29 @@ import sys
 import numpy
 import cv2 as opencv
 from mss import mss
+from debug import reset, bold, italic
 
 
-def help():
+def print_arg_help():
+    """information about the required arguments to run this script"""
     print(
-        """\033[1mERROR: One or more necessary arguments were not passed.\033[0m The following arguments are required to run this program:
-   \033[1mwidth\033[0m:   the width of the capture window in pixels (integer)
-   \033[1mheight\033[0m:  the height of the capture window in pixels (integer)
-   \033[1mleft\033[0m:    the x-coordinate of the upper-left corner of the capture window (integer)
-   \033[1mtop\033[0m:     the y-coordinate of the upper-left corner of the capture window (integer)
-   \033[1mscale\033[0m:   amount to downscale pixels by to match the images with (integer)
-\033[3mNote: on macOS with a retina display, the scaling factor will probably need to be twice what you expect.\033[0m"""
+        f"""{bold}ERROR: One or more necessary arguments were not passed.{reset} The following arguments are required to run this program:
+   {bold}width{reset}:   the width of the capture window in pixels (integer)
+   {bold}height{reset}:  the height of the capture window in pixels (integer)
+   {bold}left{reset}:    the x-coordinate of the upper-left corner of the capture window (integer)
+   {bold}top{reset}:     the y-coordinate of the upper-left corner of the capture window (integer)
+   {bold}scale{reset}:   amount to downscale pixels by to match the images with (integer)
+{italic}Note: on macOS with a retina display, the scaling factor will probably need to be twice what you expect.{reset}"""
     )
+
+
+def imload(filepath):
+    """load a specified image preserving the alpha channel -- raises FileNotFoundError if not found"""
+    im = opencv.imread(filepath, opencv.IMREAD_UNCHANGED)
+    if im is None:
+        raise FileNotFoundError
+    else:
+        return im
 
 
 if __name__ == "__main__":
@@ -28,7 +39,7 @@ if __name__ == "__main__":
 
     # print explanation of necessary args
     except (IndexError, TypeError):
-        help()
+        print_arg_help()
     except ValueError:
         print("ERROR: Scale factor must be positive and nonzero!")
 
@@ -40,7 +51,7 @@ if __name__ == "__main__":
         limit = 10000
 
         # read image with alpha channel
-        sprite = opencv.imread("sprites/test.png", opencv.IMREAD_UNCHANGED)
+        sprite = imload("sprites/test.png")
         # split alpha channel to mask, keep rgb in sprite
         sprite, mask = sprite[:, :, :3], sprite[:, :, 3]
 

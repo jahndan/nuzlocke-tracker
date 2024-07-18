@@ -2,11 +2,11 @@ from PIL import Image
 import numpy
 import cv2 as opencv
 from bidict import bidict
-from readfont_index import normal_fontmap, bold_fontmap
+from readfont_index import normal_namemap, bold_namemap
 
 
-# reads, reformats, and modifies the built-in palette to be usable
 def process_palette(im: Image, bold: bool):
+    """reads, reformats, and modifies the built-in palette to be usable"""
     raw = im.getpalette()  # flattened rgb triple array
     # unflattening said array with bgr triples for sanity
     pal = [
@@ -24,16 +24,16 @@ def process_palette(im: Image, bold: bool):
     return npal
 
 
-# create bgra array of image data from palette indexed image data
 def substitute_colors(mat: numpy.ndarray, pal: list[list]):
+    """create bgra array of image data from palette indexed image data"""
     assert len(mat.shape) == 2  # array passed in must be a 2d array of palette indices!
     # substitute indices for palette colors
     imlst = [[pal[idx] for idx in lst] for lst in mat.tolist()]
     return numpy.array(imlst)
 
 
-# 4-channel color equality (args should either be a standalone color or 1d subarray)
 def match_color(pixel: numpy.ndarray, color: numpy.ndarray):
+    """4-channel color equality (args should either be a standalone color or 1d subarray)"""
     assert pixel.shape == (4,)  # length 4, 1d arrays only
     assert color.shape == (4,)  # length 4, 1d arrays only
     for i in range(4):
@@ -42,8 +42,8 @@ def match_color(pixel: numpy.ndarray, color: numpy.ndarray):
     return True
 
 
-# checks if any pixels in a 2d subarray don't match bgra(0, 0, 0, 0)
 def check_content(strip: numpy.ndarray):
+    """checks if any pixels in a 2d subarray don't match bgra(0, 0, 0, 0)"""
     assert len(strip.shape) == 2  # 2d subarrays only
     for pixel in strip:
         if not match_color(pixel, numpy.array([0, 0, 0, 0])):
@@ -51,8 +51,8 @@ def check_content(strip: numpy.ndarray):
     return False
 
 
-# crops a 3d array to content, i.e. removes rows/columns that only contain bgra(0, 0, 0, 0)
 def crop_content(content: numpy.ndarray, vert=True, horiz=True):
+    """crops a 3d array to content, i.e. removes rows/columns that only contain bgra(0, 0, 0, 0)"""
     assert len(content.shape) == 3  # 3d arrays only
     upperbound, lowerbound = 0, content.shape[0]
     leftbound, rightbound = 0, content.shape[1]
@@ -76,8 +76,8 @@ def crop_content(content: numpy.ndarray, vert=True, horiz=True):
     return content[upperbound:lowerbound, leftbound:rightbound]
 
 
-# makes a map from name of character --> img data of character
 def process_font(arr: numpy.ndarray, names: bidict[int, str]):
+    """makes a map from name of character --> img data of character"""
     # partition the full array into 16x16 subarrays
     vsplits, hsplits = numpy.arange(16, 512, 16), numpy.arange(16, 256, 16)
     partition = [
@@ -89,14 +89,11 @@ def process_font(arr: numpy.ndarray, names: bidict[int, str]):
     chars = {
         filename: crop_content(partition[index]) for index, filename in names.items()
     }
-    # chars = dict()
-    # for index, filename in names.items():
-    #     chars[filename] = crop_content(partition[index])
     return chars
 
 
-# takes the map of char names and image data, uses that to export as files
 def export_files(chars: dict, exports=None):
+    """takes the map of char names and image data, uses that to export as files"""
     if exports == None:
         exports = chars.keys()
     for filename in exports:
@@ -110,20 +107,20 @@ def export_files(chars: dict, exports=None):
 
 
 if __name__ == "__main__":
-    filename = "src/font/data_00000000.font.png"
+    filename = "src/font/data_0.font.png"
     print(f"Processing: {filename}")
     img = Image.open(filename)
     palette = process_palette(img, False)
     imarr = substitute_colors(numpy.array(img), palette)
-    chars = process_font(imarr, normal_fontmap)
+    chars = process_font(imarr, normal_namemap)
     export_files(chars)
     print(f"Finished processing: {filename}")
 
-    filename = "src/font/data_00000002.font.png"
+    filename = "src/font/data_2.font.png"
     print(f"Processing: {filename}")
     img = Image.open(filename)
     palette = process_palette(img, True)
     imarr = substitute_colors(numpy.array(img), palette)
-    chars = process_font(imarr, bold_fontmap)
+    chars = process_font(imarr, bold_namemap)
     export_files(chars)
     print(f"Finished processing: {filename}.")

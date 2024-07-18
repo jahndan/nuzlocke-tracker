@@ -1,1 +1,1 @@
-# this file makes `font` a package, allowing files `src/` to import from it
+# this file makes `font` a package, allowing files from `src` to import from it
