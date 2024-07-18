@@ -1,6 +1,11 @@
 from bidict import bidict, ValueDuplicationError
 
 
+# running this as a standalone script makes debug.py inaccessible to it
+# and you only need these if this is run as a standalone script for validation
+reset, bold = "\033[0m", "\033[1m"
+
+
 def prefix(prefix: str, elem: str | None):
     return None if elem == None else f"{prefix}{elem}"
 
@@ -28,7 +33,7 @@ many symbols have two versions used in different localizations of the game,
 so they need a prefix to differentiate the versions:
 - jp is used as a prefix for symbols that are specifically sized and spaced
   for typesetting the japanese versions (note: the filenames use kunrei-shiki
-  spellings for disambiguation of kana that hepburn romanizes the same way)
+  spellings for disambiguation of kana that hepburn would romanize identically)
 - en is used as a prefix for symbols that are sized and spaced for the font
   used in the international versions of the game (not all of them are in the
   english versions but nearly all of them are, so I used that prefix)
@@ -38,7 +43,7 @@ most non-text symbols have a version sized for the japanese typesetting, so
 those should have the appropriate prefix
 """
 
-# normal font data (used almost everywhere)
+# normal font filenames (used almost everywhere)
 data_0 = [
     element  # auto-flattened for convenience
     for sublist in [  # but formatted so the rows are still delineated nicely
@@ -533,28 +538,28 @@ data_0 = [
             "",
             "",
             "en.pokemoney",  # pokédollar symbol
-            "",
-            "",
+            "",  # upside down exclamation mark
+            "",  # upside down question mark
             "en.exclaim",  # exclamation mark
             "en.question",  # question mark
             "en.comma",
             "en.period",  # full stop
-            "en.ellipsis",  # ...
+            "en.ellipsis",  # … or more commonly ...
             "en.dot",  # interpunct •
         ],
         [
             "en.slash",  # forward slash /
-            "en.osquote",  # opening single quote
-            "en.csquote",  # closing single quote
-            "en.odquote",  # opening double quote
-            "en.cdquote",  # closing double quote
-            "",
-            "",
-            "",
-            "en.oparen",  # opening parenthesis
-            "en.cparen",  # closing parenthesis
-            "en.male",  # ♂
-            "en.female",  # ♀
+            "en.osquote",  # opening single quote (english)
+            "en.csquote",  # closing single quote (english)
+            "en.odquote",  # opening double quote (english)
+            "en.cdquote",  # closing double quote (english)
+            "",  # double comma? (probably other cdq)
+            "",  # (other odq?)
+            "",  # (other cdq?)
+            "en.oparen",  # opening parenthesis (other osq?)
+            "en.cparen",  # closing parenthesis (other csq?)
+            "en.male",  # ♂ symbol
+            "en.female",  # ♀ symbol
             "en.plus",
             "en.dash",  # minus, but likely used in dialogue as dash
             "en.asterisk",
@@ -562,8 +567,8 @@ data_0 = [
         ],
         [
             "en.equal",
-            "en.ampersand",  # and symbol
-            "en.tilde",  # negation ~
+            "en.ampersand",  # & (and) symbol
+            "en.tilde",  # ~ (not) symbol
             "en.colon",
             "en.semicolon",
             # playing card suits
@@ -645,15 +650,16 @@ data_0 = [
 ]
 
 if __name__ == "__main__":
-    print("\033[1mdata_0\033[0m")
+    print(f"{bold}data_0_names{reset}")
     print(data_0)
     print()
 
-# bold font data (mostly only used in battle)
+# bold font filenames (mostly only used in battle)
 data_2 = [
     (
-        # identical layout to normal font but without some symbols
+        # use normal font filenames with prefix to distinguish
         (prefix("b_", data_0[i]) if data_0[i] != "" else "")
+        # identical layout to normal font but without some symbols
         if i
         not in set(
             j
@@ -666,45 +672,51 @@ data_2 = [
 ]
 
 if __name__ == "__main__":
-    print("\033[1mdata_2\033[0m")
+    print(f"{bold}data_2_names{reset}")
     print(data_2)
     print()
 
+normal_namemap = bidict()
 """a bijective mapping between font file partition index and exported filename"""
-normal_fontmap = bidict()
 # mapping index <--> names but only add them if name != "" and name  != None
 for i in range(len(data_0)):
     if data_0[i] != None:  # no character data
-        if data_0[i] != "":  # currently unlabeled
+        if data_0[i] != "":  # currently unlabeled or whitespace
             try:
-                normal_fontmap[i] = data_0[i]
+                # key duplication isn't possible because we're iterating over a list
+                normal_namemap[i] = data_0[i]
             except ValueDuplicationError:
-                print(f"Duplicate character filename found in normal_fontmap at {i}: {data_0[i]}")
+                print(
+                    f"Duplicate character filename found in normal_namemap at {i}: {data_0[i]}"
+                )
 
 if __name__ == "__main__":
-    print("\033[1mnormal_fontmap\033[0m")
-    print(normal_fontmap)
+    print(f"{bold}normal_namemap{reset}")
+    print(normal_namemap)
     print()
 
+bold_namemap = bidict()
 """a bijective mapping between font file partition index and exported filename"""
-bold_fontmap = bidict()
 # mapping index <--> names but only add them if name != "" and name  != None
 for i in range(len(data_2)):
     if data_2[i] != None:  # no character data
-        if data_2[i] != "":  # currently unlabeled
+        if data_2[i] != "":  # currently unlabeled or whitespace
             try:
-                bold_fontmap[i] = data_2[i]
+                # key duplication isn't possible because we're iterating over a list
+                bold_namemap[i] = data_2[i]
             except ValueDuplicationError:
-                print(f"Duplicate character filename found in bold_fontmap at {i}: {data_2[i]}")
+                print(
+                    f"Duplicate character filename found in bold_namemap at {i}: {data_2[i]}"
+                )
 
 if __name__ == "__main__":
-    print("\033[1mbold_fontmap\033[0m")
-    print(bold_fontmap)
+    print(f"{bold}bold_namemap{reset}")
+    print(bold_namemap)
     print()
 
 ### NOTES
-# only normal_fontmap and bold_fontmap are intended to be used (they map from indices to filenames, and
+# only normal_namemap and bold_namemap are intended to be used (they map from indices to filenames, and
 # don't strictly *need* to be bidicts, but conveniently, it raises errors when value duplications occur)
 ### TODO
-# fill out character names according to fontfile layout (i.e. replace all placeholder "" with actual names)
-# remove guards once names are filled in and finalized (if data == ""), (ValueDuplicationError)
+# fill out remaining character names according to fontfile layout (replace all placeholder "" with actual names)
+# name whitespace? not exactly necessary since it's transparent and would match everywhere
