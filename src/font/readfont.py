@@ -8,6 +8,11 @@ else:  # relative import from parent package when loaded as module
     from .readfont_index import normal_namemap, bold_namemap
 
 
+### location palette map
+# main = [0x01, 0x01, 0x01, 0xFF]  # bgra
+# shadow = [0xA3, 0x92, 0x92, 0xFF]  # bgra
+
+
 ### this is the base palette in src/font/*.font.png:
 # 0 : green (not content)
 # 1 : white (background)
@@ -92,7 +97,8 @@ def process_font(arr: numpy.ndarray, names: bidict[int, str]):
         for sub in numpy.split(arr, vsplits, axis=0)
         for char in numpy.split(sub, hsplits, axis=1)
     ]
-    # add character data to dict if its index is mapped to a filename
+    # add horizontally cropped character data to dict if its index is mapped to a filename
+    # (vertical cropping gives smaller files, but not cropping allows for easier alignment)
     chars = dict()
     for index, filename in names.items():
         img = crop_content(partition[index], vert=False, horiz=True)
@@ -134,4 +140,3 @@ if __name__ == "__main__":
     chars = process_font(numpy.array(img), bold_namemap)
     export_files(chars, bold_namemap.values())
     print(f"Finished processing: {filename}.")
-

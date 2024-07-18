@@ -2,6 +2,7 @@ import sys
 import numpy
 import cv2 as opencv
 from mss import mss
+import en_model as model
 from debug import reset, bold, italic
 
 
@@ -55,30 +56,33 @@ if __name__ == "__main__":
         ## TODO replace this single-image loading with loading of many chars into
         ## a format more suitable for the model stuff
         # read image with alpha channel
-        sprite = imload("sprites/test.png")
+        # sprite = imload("sprites/test.png")
         # split alpha channel to mask, keep rgb in sprite
-        sprite, mask = sprite[:, :, :3], sprite[:, :, 3]
+        # sprite, mask = sprite[:, :, :3], sprite[:, :, 3]
 
         while True:
             gbra = numpy.array(sct.grab(bounding_box))
             img = gbra[:, :, :3]  # discard alpha from screen capture
-
             res = opencv.resize(
                 img, None, fx=scale, fy=scale, interpolation=opencv.INTER_NEAREST
             )
 
-            # model.process(res)  # with all of its side-effects
+            model.process(res)  # with all of its side-effects
             ## TODO end of loop (rest of this was for testing purposes)
 
-            # result = opencv.matchTemplate(res, sprite, opencv.TM_CCOEFF_NORMED)
-            result = opencv.matchTemplate(
-                res, sprite, opencv.TM_CCOEFF_NORMED, None, mask
-            )
-            match_indices = numpy.arange(result.size)[(result > confidence).flatten()]
-            matches = numpy.unravel_index(match_indices[:limit], result.shape)
-            print(matches)
+            # # result = opencv.matchTemplate(res, sprite, opencv.TM_CCOEFF_NORMED)
+            # result = opencv.matchTemplate(
+            #     res, sprite, opencv.TM_CCOEFF_NORMED, None, mask
+            # )
+            # match_indices = numpy.arange(result.size)[(result > confidence).flatten()]
+            # matches = numpy.unravel_index(match_indices[:limit], result.shape)
+            # print(matches)
 
+            # opencv.imshow("location", img[0:128, 0:512, :])
+            # opencv.imshow("location", res[18:33, 8:123, :])
             opencv.imshow("screen", res)
+            break
+        while True:
             if (opencv.waitKey(1) & 0xFF) == ord("q"):
                 opencv.destroyAllWindows()
                 break
