@@ -19,7 +19,7 @@ def print_arg_help():
 
 
 def imload(filepath):
-    """load a specified image preserving the alpha channel -- raises FileNotFoundError if not found"""
+    """load a specified image preserving channels -- raises FileNotFoundError if not found"""
     im = opencv.imread(filepath, opencv.IMREAD_UNCHANGED)
     if im is None:
         raise FileNotFoundError

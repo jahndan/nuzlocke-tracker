@@ -1,13 +1,26 @@
 from bidict import bidict, ValueDuplicationError
-
+from typing import Iterable
 
 # running this as a standalone script makes debug.py inaccessible to it
 # and you only need these if this is run as a standalone script for validation
 reset, bold = "\033[0m", "\033[1m"
 
 
+def iterprint(items: Iterable, tab=2):
+    assert tab >= 0  # negative tab space isn't possible
+    for item in items:
+        print(" " * tab, item, sep="")
+
+
 def prefix(prefix: str, elem: str | None):
     return None if elem == None else f"{prefix}{elem}"
+
+
+normal_namemap = bidict()  # populated lower down
+"""a bijective mapping between font file partition index and exported filename"""
+
+bold_namemap = bidict()  # populated lower down
+"""a bijective mapping between font file partition index and exported filename"""
 
 
 """
@@ -44,7 +57,7 @@ those should have the appropriate prefix
 """
 
 # normal font filenames (used almost everywhere)
-data_0 = [
+normal_data_0: list[str | None] = [
     element  # auto-flattened for convenience
     for sublist in [  # but formatted so the rows are still delineated nicely
         # this section roughly corresponds to the japanese font
@@ -649,16 +662,11 @@ data_0 = [
     for element in sublist
 ]
 
-if __name__ == "__main__":
-    print(f"{bold}data_0_names{reset}")
-    print(data_0)
-    print()
-
 # bold font filenames (mostly only used in battle)
-data_2 = [
+bold_data_2: list[str | None] = [
     (
         # use normal font filenames with prefix to distinguish
-        (prefix("b_", data_0[i]) if data_0[i] != "" else "")
+        (prefix("b_", normal_data_0[i]) if normal_data_0[i] != "" else "")
         # identical layout to normal font but without some symbols
         if i
         not in set(
@@ -671,47 +679,53 @@ data_2 = [
     for i in range(32 * 16)
 ]
 
-if __name__ == "__main__":
-    print(f"{bold}data_2_names{reset}")
-    print(data_2)
+dirty = False  # tracks if an error is raised, stops the actual maps from printing
+
+# mapping index <--> names but only add them if we have a filename for it
+for i, fname in enumerate(normal_data_0):
+    # None -> no character data, "" -> currently unlabeled or whitespace
+    if fname != None and fname != "":
+        try:
+            # key duplication isn't possible because they're list indices
+            normal_namemap.put(i, fname)
+        except ValueDuplicationError:
+            print(
+                f"Duplicate character filename found in normal_namemap! {normal_namemap.inv[fname]}, {i}: {fname}"
+            )
+            if __name__ != "__main__":
+                raise
+            dirty = True
+
+# mapping index <--> names but only add them if name != "" and name  != None
+for i, fname in enumerate(bold_data_2):
+    # None -> no character data, "" -> currently unlabeled or whitespace
+    if fname != None and fname != "":
+        try:
+            # key duplication isn't possible because they're list indices
+            bold_namemap.put(i, fname)
+        except ValueDuplicationError:
+            print(
+                f"Duplicate character filename found in bold_namemap! {bold_namemap.inv[fname]}, {i}: {fname}"
+            )
+            if __name__ != "__main__":
+                raise
+            dirty = True
+
+if __name__ == "__main__" and not dirty:
+    print(f"{bold}normal font filenames{reset}")
+    iterprint(normal_data_0)
     print()
 
-normal_namemap = bidict()
-"""a bijective mapping between font file partition index and exported filename"""
-# mapping index <--> names but only add them if name != "" and name  != None
-for i in range(len(data_0)):
-    if data_0[i] != None:  # no character data
-        if data_0[i] != "":  # currently unlabeled or whitespace
-            try:
-                # key duplication isn't possible because we're iterating over a list
-                normal_namemap[i] = data_0[i]
-            except ValueDuplicationError:
-                print(
-                    f"Duplicate character filename found in normal_namemap at {i}: {data_0[i]}"
-                )
+    print(f"{bold}bold font filenames{reset}")
+    iterprint(bold_data_2)
+    print()
 
-if __name__ == "__main__":
     print(f"{bold}normal_namemap{reset}")
-    print(normal_namemap)
+    iterprint(normal_namemap.items())
     print()
 
-bold_namemap = bidict()
-"""a bijective mapping between font file partition index and exported filename"""
-# mapping index <--> names but only add them if name != "" and name  != None
-for i in range(len(data_2)):
-    if data_2[i] != None:  # no character data
-        if data_2[i] != "":  # currently unlabeled or whitespace
-            try:
-                # key duplication isn't possible because we're iterating over a list
-                bold_namemap[i] = data_2[i]
-            except ValueDuplicationError:
-                print(
-                    f"Duplicate character filename found in bold_namemap at {i}: {data_2[i]}"
-                )
-
-if __name__ == "__main__":
     print(f"{bold}bold_namemap{reset}")
-    print(bold_namemap)
+    iterprint(bold_namemap.items())
     print()
 
 ### NOTES
