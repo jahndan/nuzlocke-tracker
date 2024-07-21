@@ -50,15 +50,6 @@ if __name__ == "__main__":
     else:
         sct = mss()
         bounding_box = {"width": width, "height": height, "left": left, "top": top}
-        confidence = 0.99  # to be manually tuned
-        limit = 10000  # should be irrelevant soon
-
-        ## TODO replace this single-image loading with loading of many chars into
-        ## a format more suitable for the model stuff
-        # read image with alpha channel
-        # sprite = imload("sprites/test.png")
-        # split alpha channel to mask, keep rgb in sprite
-        # sprite, mask = sprite[:, :, :3], sprite[:, :, 3]
 
         while True:
             gbra = numpy.array(sct.grab(bounding_box))
@@ -68,21 +59,9 @@ if __name__ == "__main__":
             )
 
             model.process(res)  # with all of its side-effects
-            ## TODO end of loop (rest of this was for testing purposes)
 
-            # # result = opencv.matchTemplate(res, sprite, opencv.TM_CCOEFF_NORMED)
-            # result = opencv.matchTemplate(
-            #     res, sprite, opencv.TM_CCOEFF_NORMED, None, mask
-            # )
-            # match_indices = numpy.arange(result.size)[(result > confidence).flatten()]
-            # matches = numpy.unravel_index(match_indices[:limit], result.shape)
-            # print(matches)
-
-            # opencv.imshow("location", img[0:128, 0:512, :])
-            # opencv.imshow("location", res[18:33, 8:123, :])
+            ## TODO display information on this window
             opencv.imshow("screen", res)
-            break
-        while True:
             if (opencv.waitKey(1) & 0xFF) == ord("q"):
                 opencv.destroyAllWindows()
                 break

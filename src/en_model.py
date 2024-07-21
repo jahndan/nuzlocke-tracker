@@ -6,25 +6,14 @@ from bidict import bidict
 from typing import Iterable, Callable
 from font import substitute_colors, sort_key as font_sortkey
 
+# TODO also ideally parallelize what can be parallelized for more speed
 
-def image(x: Iterable, f: Callable):
-    """utility function for taking the mathematical image of a set under a function/mapping"""
-    return {y: f(y) for y in x}
-
-
-"""
-def normal_map(char):
-    tmp = imload("sprites/" + normal_fontmap.get(char) + ".png")
-    return tmp[:, :, :3], tmp[:, :, 3]  # split bgra into image + mask
+# TODO clarify terminology
+# in palette transfer, charset is a literal set of single character strings
+# elsewhere, charset is what palette transfer returns: ordered list associating chars with img data
 
 
-def bold_map(char):
-    tmp = imload("sprites/" + bold_fontmap.get(char) + ".png")
-    return tmp[:, :, :3], tmp[:, :, 3]  # split bgra into image + mask
-"""
-
-
-# maybe make our own class for charsets and fontmaps? (they'd basically just be wrappers)
+# maybe make our own classes for charsets and fontmaps? (they'd basically just be wrappers)
 def palette_transfer(charset: Iterable, fontmap: bidict, palette: list[numpy.ndarray]):
     lst = []
     for char in charset:
@@ -61,15 +50,15 @@ locations_palette = [
     numpy.array([0x01, 0x01, 0x01], dtype=numpy.uint8),
     numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),
 ]
-locations: list[tuple] = palette_transfer(
-    alphabet | numbers | set(".’-"), normal_fontmap, locations_palette
+locations = palette_transfer(
+    alphabet | numbers | set(".’-"),
+    normal_fontmap,
+    locations_palette,
 )
 # species = alphabet | set("-2")  # this is definitely missing stuff
 # # potentially something that uses bold_fontmap (like level, gender)
 # # etc ...
-
-
-### TODO debugging prints + removing them once done
+# TODO charset class??
 
 
 def stall():
@@ -79,164 +68,77 @@ def stall():
             break
 
 
-# chardict probably actually needs a class: list of tuples of (sortkey, char, img, mask)
-def process_locations(haystack: numpy.ndarray, chardict: list[tuple], threshold=0.95):
-    print("----------")
+def process_text(region: numpy.ndarray, charset, threshold: float = 0.95):
+    # the gen 4 font is standardized at 16px height
+    ROW_HEIGHT = 16
     # negative indices don't show up naturally
     UNASSIGNED = -1
     OCCUPIED = -2
 
-    # get cropped area dims for convenience
-    fr_height, fr_width = haystack.shape[:-1]
-
-    print("haystack shape:", haystack.shape)
-    opencv.imshow(
-        "haystack",
-        opencv.resize(haystack, None, fx=4, fy=4, interpolation=opencv.INTER_NEAREST),
+    ## TODO test that this works correctly with multi-line pieces of text
+    # set up rows and haystack if necessary
+    rows, leftover_region = divmod(region.shape[0], ROW_HEIGHT)
+    assert leftover_region == 0  # full rows of text (should be aligned)
+    haystack = (
+        region
+        if rows <= 1
+        else numpy.block(
+            # preserve inner row structures, but place them horizontally next to each other
+            [region[ROW_HEIGHT * i : ROW_HEIGHT * (i + 1)] for i in range(rows)]
+            ## TODO this may need to be nested inside another list so it concats horizontally
+        )
     )
-    print()
-    stall()
-    print()
-    debug_minima, debug_maxima = [], []
-    # iterate over characters in locations, associate them with match scores
+
     chars, char_sizes, char_scores = [], [], []
-    for _, char, needle, mask in chardict:
+    # iterate over characters in charset, associate them with match scores
+    for _, char, needle, mask in charset:
         chars.append(char)  # character being matched
-        char_sizes.append(needle.shape[:-1])  # height, width of character
-        # print("haystack", haystack.shape, haystack.dtype)
-        # print("needle", needle.shape, needle.dtype)
-        # print(needle)
-        # print("mask", mask.shape, mask.dtype)
-        # print(mask)
+        char_sizes.append(needle.shape[1])  # width of character (height is fixed)
         score = opencv.matchTemplate(
             haystack, needle, opencv.TM_CCOEFF_NORMED, None, mask
-        )
+        ).flat  # vertical axis is unnecessary, row height is fixed
         char_scores.append(
-            # fixing the size to be consistent
-            numpy.pad(
-                score,
-                ((0, needle.shape[0] - 1), (0, needle.shape[1] - 1)),
-                mode="constant",
-                constant_values=-1,  # pad with lowest possible score for TM_CCOEFF_NORMED
-            ).flat
-            # TODO double check if this flatten then unflatten business is unnecessary
+            # fixing the size to be consistent (pad with lowest normed score)
+            numpy.pad(score, (0, needle.shape[1] - 1), constant_values=-1)
         )
-        print("char:", char, needle.shape[:-1])
-        debug_minima.append(numpy.nanmin(score))
-        debug_maxima.append(numpy.nanmax(score))
-        print("score extrema:", numpy.nanmin(score), numpy.nanmax(score))
-        print("nan found:", numpy.isnan(score).any())
-        print("posinf found:", numpy.isposinf(score).any())
-        print("neginf found:", numpy.isneginf(score).any())
-        print("score:", score)
-        opencv.imshow(
-            "needle",
-            opencv.resize(needle, None, fx=4, fy=4, interpolation=opencv.INTER_NEAREST),
-        )
-        opencv.imshow(
-            "mask",
-            opencv.resize(mask, None, fx=4, fy=4, interpolation=opencv.INTER_NEAREST),
-        )
-        opencv.imshow(
-            "score",
-            opencv.resize(
-                numpy.pad(score, ((0, needle.shape[0] - 1), (0, needle.shape[1] - 1))),
-                None,
-                fx=4,
-                fy=4,
-                interpolation=opencv.INTER_NEAREST,
-            ),
-        )
-        print()
-        stall()
-    print()
-    print("extrema:", min(debug_minima), max(debug_maxima))
-    print("chars:", chars)
+
     char_scores = numpy.array(char_scores)
-    # get indices & maxima along char axis (with thresholding to ignore nonmatches)
+    # get indices of strongest char match in each position (maxima for threshold comparison)
     maxima, indices = char_scores.max(axis=0), char_scores.argmax(axis=0)
-    print("maxima:", maxima.reshape(16, fr_width))
-    print("indices:", indices.reshape(16, fr_width))
-    print()
-    stall()
-    print()
+
     char_matches = numpy.where(
         maxima > threshold, indices, numpy.full_like(indices, UNASSIGNED)
-    ).reshape(
-        fr_height, fr_width
-    )  # unflatten back to 2d
-    print("initial matches:", char_matches)
-    opencv.imshow(
-        "initial matches",
-        opencv.resize(
-            (char_matches) * (1.0 / len(chars)),
-            None,
-            fx=4,
-            fy=4,
-            interpolation=opencv.INTER_NEAREST,
-        ),
     )
-    print()
-    stall()
+
     # block out overlapping matches
-    for (y, x), i in numpy.ndenumerate(char_matches):
-        # y, x are indices in char_matches, i is an index in char_data that (y,x) corresponds to
+    for (x,), i in numpy.ndenumerate(char_matches):
+        # x is a horizontal position for char_matches
+        # i is an index in char_data that (y,x) corresponds to
         if i < 0:  # if i == UNASSIGNED or i == OCCUPIED:
             continue
-        c_height, c_width = char_sizes[i]
-        # block out the full region, but set the upper left corner back to what it was
-        char_matches[y : (y + c_height), x : (x + c_width)] = OCCUPIED
-        char_matches[y, x] = i
-    opencv.imshow(
-        "matches",
-        opencv.resize(
-            (char_matches + 2) * (1.0 / len(chars)),
-            None,
-            fx=4,
-            fy=4,
-            interpolation=opencv.INTER_NEAREST,
-        ),
-    )
-    print("blocked matches:", char_matches)
-    print()
-    stall()
-    print()
+        c_width = char_sizes[i]
+        # block out the full region, but leave the original pixel
+        char_matches[x + 1 : x + c_width] = OCCUPIED
+        # char_matches[x] = i
+
     # stringify from matches
-    # TODO support multi-line blocks of text (this correctly stringifies one-liners only)
     words = []
-    current = ""
-    column_empty = numpy.where(
-        # empty iff everything is UNASSIGNED
-        numpy.logical_and(
-            # axis 0 is the vertical
-            char_matches.max(axis=0) == UNASSIGNED,
-            char_matches.min(axis=0) == UNASSIGNED,
-        ),
-        True,
-        False,
-    )
-    print("column_empty:", column_empty)
-    print()
-    stall()
-    # iterate over axes in opposite order to avoid alignment issues (TODO: standardize char height? to iterate y,x instead?)
-    for (x, y), i in numpy.ndenumerate(char_matches.swapaxes(0, 1)):
-        if column_empty[x] == True and current != "":
-            words.append(current)
-            current = ""
+    current_word = ""
+    for (x,), i in numpy.ndenumerate(char_matches):
+        if i == UNASSIGNED and current_word != "":
+            words.append(current_word)
+            current_word = ""
         if i < 0:  # if i == UNASSIGNED or i == OCCUPIED:
             continue
-        current = current + chars[i]
-    print("----------")
+        current_word = current_word + chars[i]
     return words
 
 
 def process(frame: numpy.ndarray):
     # locations
-    print(process_locations(frame[15:31, 8:123, :], locations))
-    # process others
+    loc_data = process_text(frame[15:31, 8:123, :], locations)
+    # there should be various side effects based on the output of process_text
+    print(loc_data)
 
-    # notes: haystack is the slice to search for text in (should be properly
-    # vertically aligned, with its height a multiple of 16), and rows should
-    # dictate how many 16px rows of text there are
-    # process_text(haystack, rows) -> numpy.block([ haystack[2*i:2*(i+1)] for i in range(rows) ])
+    # process others
     pass
