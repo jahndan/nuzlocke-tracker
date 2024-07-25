@@ -7,8 +7,6 @@ if __name__ == "__main__":  # script has no parent package
 else:  # relative import from parent package when loaded as module
     from .readfont_index import normal_namemap, bold_namemap
 
-## we may want to use del to remove unnecessary
-## names and let python deallocate them
 
 ### this is the base palette in src/font/*.font.png:
 # 0 : green (not content)
@@ -23,65 +21,37 @@ else:  # relative import from parent package when loaded as module
 # 2 : dark grey (text color 2)
 # 3 : black (text color 3, for bold only)
 
+### these palettes' index mapping shouldn't be messed with ideally
+# (sortkey and dynamic recoloring will break if it changes)
+
+
 ## note: sprites are now one channel, which will need updating where loaded
 # mask can be constructed with numpy.where(img > 0, 255, 0)
 
 
-## no longer necessary
-# def process_palette(im: Image, bold: bool):
-#     """reads, reformats, and modifies the built-in palette to be usable"""
-#     raw = im.getpalette()  # flattened rgb triple array
-#     # unflattening said array with bgr triples for sanity
-#     pal = [
-#         [raw[3 * i + 2], raw[3 * i + 1], raw[3 * i + 0]]  # packing triples in bgr order
-#         for i in range(len(raw) // 3)
-#     ]
-#     # replace with bgra quadruples, i.e. add alpha channel
-#     npal = [color + [0xFF] for color in pal]
-#     # map green to the zero vector because it is not part of content
-#     npal[4] = [0x00, 0x00, 0x00, 0x00]
-#     # map white to zero alpha because it is part of content but transparent
-#     npal[0] = [0xFF, 0xFF, 0xFF, 0x00]
-#     # non-bold: map black to zero alpha like white (bold uses black for nontransparent color)
-#     npal[3] = [0x0F, 0x0F, 0x0F, 0xFF] if bold else [0xFF, 0xFF, 0xFF, 0x00]
-#     return npal
+# used for dynamically recoloring grayscale images (naive implementation, unoptimized)
+def substitute_colors(image: numpy.ndarray, pal: list[numpy.ndarray]):
+    """replace indexed image data (2d) with palette colors using palette"""
+    mapped = numpy.stack((image, image, image), axis=2, dtype=numpy.uint8)
+    # this should be very parallelizable
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            mapped[i, j] = pal[image[i, j]]
+    return mapped
 
 
-## not strictly required for this, but may want relocation for dynamically recoloring
-# def substitute_colors(mat: numpy.ndarray, pal: list[list]):
-#     """replace indexed image data with palette colors using nested list palette"""
-#     assert len(mat.shape) == 2  # array passed in must be a 2d array of palette indices!
-#     # substitute indices for palette colors
-#     imlst = [[pal[idx] for idx in lst] for lst in mat.tolist()]
-#     return numpy.array(imlst)
-
-
-## shouldn't be needed anymore but might be useful in general?
-# def match_color(pixel: numpy.ndarray, color: numpy.ndarray):
-#     """4-channel color equality (args should either be a standalone color or 1d subarray)"""
-#     assert pixel.shape == (4,)  # length 4, 1d arrays only
-#     assert color.shape == (4,)  # length 4, 1d arrays only
-#     for i in range(4):
-#         if pixel[i] != color[i]:
-#             return False
-#     return True
-
-
-## also unnecessary at this point
-# def check_content(strip: numpy.ndarray):
-#     """checks if all pixels in a 1d strip are palette color 0"""
-#     assert len(strip.shape) == 1  # 1d strips only
-#     for pixel in strip:
-#         if pixel != 0:
-#             return True
-#     return False
-
-
-def sortkey(content: numpy.ndarray):
+def sort_key(content: numpy.ndarray):
+    """sorting key function for determining which characters need to be recognized first"""
+    # wider chars first because thinner chars are more likely to falsely match
+    # darker chars first because they are less likely to falsely match on thinner chars
+    # note: the correctness of this hinges on the palette indices staying organized as they are
     return (content.shape[1] << 10) + int(content.sum())
 
 
 def fix_color(content: numpy.ndarray):
+    """simply remaps the palette indices 0,1 -> 0 so a transparency mask can be constructed trivially"""
+    # color 0 is non-content, color 1 is transparent background, but we don't need that distinction after cropping
+    # note: the correctness of this hinges on the palette indices staying organized as they are
     return numpy.where(content > 0, (content - 1), 0)
 
 
