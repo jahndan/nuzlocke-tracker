@@ -1,12 +1,18 @@
 from bidict import bidict, ValueDuplicationError
 from typing import Iterable
 
-# running this as a standalone script makes debug.py inaccessible to it
+# Running this file as a script will validate that the entries do not conflict
+# with each other. It will print the source of errors as it finds them, and if
+# no errors are found, it will print the iterables to the console (~500 lines).
+
+
+# running any standalone scripts in `src/font/` makes `src/debug.py`` inaccessible
 # and you only need these if this is run as a standalone script for validation
 reset, bold = "\033[0m", "\033[1m"
 
 
 def iterprint(items: Iterable, tab=2):
+    """utility function to print large iterables with nicer formatting"""
     assert tab >= 0  # negative tab space isn't possible
     for item in items:
         print(" " * tab, item, sep="")
