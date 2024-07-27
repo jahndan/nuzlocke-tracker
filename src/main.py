@@ -19,15 +19,6 @@ def print_arg_help():
     )
 
 
-def imload(filepath):
-    """load a specified image preserving channels -- raises FileNotFoundError if not found"""
-    im = opencv.imread(filepath, opencv.IMREAD_UNCHANGED)
-    if im is None:
-        raise FileNotFoundError
-    else:
-        return im
-
-
 if __name__ == "__main__":
     ## TODO replace this with a more flexible way of passing args than sys.argv
     ## also allow user to specify language (currently only English supported)
