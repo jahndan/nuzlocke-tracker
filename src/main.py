@@ -4,6 +4,7 @@ import cv2 as opencv
 from mss import mss
 import en_model as model
 from common import reset, bold, italic, dbg
+from keyboard_input import globalHotkeys
 
 
 def print_arg_help():
