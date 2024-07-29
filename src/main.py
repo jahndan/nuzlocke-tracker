@@ -20,6 +20,12 @@ def print_arg_help():
 
 
 if __name__ == "__main__":
+    if False:  # tracker savefile found
+        # state = model.TrackerState(stuff from savefile)
+        pass
+    else:
+        state = model.TrackerState()  # initialize a new tracker state without savefile
+
     ## TODO replace this with a more flexible way of passing args than sys.argv
     ## also allow user to specify language (currently only English supported)
     # get all necessary args if given
@@ -42,6 +48,8 @@ if __name__ == "__main__":
         sct = mss()
         bounding_box = {"width": width, "height": height, "left": left, "top": top}
 
+        last_loc = ""  # temp
+
         while True:
             gbra = numpy.array(sct.grab(bounding_box))
             img = gbra[:, :, :3]  # discard alpha from screen capture
@@ -49,7 +57,11 @@ if __name__ == "__main__":
                 img, None, fx=scale, fy=scale, interpolation=opencv.INTER_NEAREST
             )
 
-            model.process(res)  # with all of its side-effects
+            model.process(state, res)  # may mutate state
+
+            if state.location != last_loc:
+                last_loc = state.location
+                print(last_loc)  # TODO draw to canvas instead
 
             ## TODO display information on this window
             opencv.imshow("screen", res)
