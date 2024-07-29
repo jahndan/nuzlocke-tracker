@@ -1,0 +1,9 @@
+{
+    "keybinds": {
+        "Mark dead": "d",
+        "Send to party": "p",
+        "Send to box": "b",
+        "Fail the encounter": "f",
+        "Edit an encounter": "<shift>+e"
+    }
+}
