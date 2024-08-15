@@ -1,0 +1,4 @@
+# individual character images can be constructed from base spritesheet
+*
+# but keep this file so this directory is tracked -- no mkdir shenanigans
+!.gitignore

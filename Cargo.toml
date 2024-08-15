@@ -1,0 +1,16 @@
+[package]
+name = "nuzlocke-tracker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.16", features = ["derive"] }
+image = "0.25.2"
+xcap = "0.0.11"
+
+# these are only used for testing reasons
+# compile with `idbg` to draw images to a separate window
+show-image = { version = "0.14.0", features = ["image"] }
+
+[features]
+idbg = []
