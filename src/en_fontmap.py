@@ -6,7 +6,7 @@ from bidict import (
     ValueDuplicationError,
 )
 from font.readfont_index import normal_data_0, bold_data_2
-from debug import reset, bold, FilenameNotFoundError, CharacterDataNotFoundError
+from common import reset, bold, FilenameNotFoundError, CharacterDataNotFoundError
 
 
 # singular characters indexed in the same order as the font file

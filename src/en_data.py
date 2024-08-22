@@ -1,7 +1,8 @@
-from enum import Enum
+import numpy
+from en_fontmap import normal_fontmap, bold_fontmap
+from font import palette_transfer, charset
 
-
-# minimal sets of chars that can be useful in general
+### minimal sets of chars that can be useful in general
 lower_alpha = set("abcdefghijklmnopqrstuvwxyz")
 upper_alpha = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 alphabet = lower_alpha | upper_alpha
@@ -11,32 +12,36 @@ numbers = set("0123456789")
 # note: ellipsis … may not be used in english version of game
 
 
+locations_palette = [
+    numpy.array([0xFF, 0xFF, 0xFF], dtype=numpy.uint8),
+    numpy.array([0xA3, 0x92, 0x92], dtype=numpy.uint8),
+    numpy.array([0x01, 0x01, 0x01], dtype=numpy.uint8),
+    numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),
+]
+locations_charset: charset = palette_transfer(
+    alphabet | numbers | set("’"),
+    normal_fontmap,
+    locations_palette,
+)
+
+# species_palette = [
+#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
+#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
+#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
+#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
+# ]
+# species: charset = palette_transfer(
+#     alphabet | set("2♂♀’-"),
+#     normal_fontmap,
+#     species_palette,
+# )
+
+# something that uses bold_fontmap (like level, gender)
+# etc ...
+
+
 # TODO json-ify the long lists that don't need to be loaded for the full duration
 # of the program and use some kind of context manager `with <context>:`
-
-
-class BattleType(Enum):
-    """
-    common checks that'll be useful:
-    - battle_type < 0 == True --> not in battle
-    - battle_type < 0 == False --> in battle
-      - should be confirmed before checking the others
-    - battle_type & 1 == True --> wild battle
-    - battle_type & 1 == False --> trainer battle
-    - battle_type < 2 == True --> single battle
-    - battle_type < 2 == False --> double battle
-    """
-
-    NONE = -1
-    """not in battle"""
-    TRAINER_SINGLE = 0
-    """singles trainer battle"""
-    WILD_SINGLE = 1
-    """singles wild encounter"""
-    TRAINER_DOUBLE = 2
-    """doubles trainer battle"""
-    WILD_DOUBLE = 3
-    """doubles wild encounter (only in specific locations)"""
 
 
 # consider splitting this so D/P/PT and HG/SS are separate and require less memory
