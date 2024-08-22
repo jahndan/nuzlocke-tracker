@@ -6,7 +6,7 @@ from typing import Iterable
 # no errors are found, it will print the iterables to the console (~500 lines).
 
 
-# running any standalone scripts in `src/font/` makes `src/debug.py`` inaccessible
+# running any standalone scripts in `src/font/` makes `src/common.py` inaccessible
 # and you only need these if this is run as a standalone script for validation
 reset, bold = "\033[0m", "\033[1m"
 

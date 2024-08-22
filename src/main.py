@@ -3,7 +3,7 @@ import numpy
 import cv2 as opencv
 from mss import mss
 import en_model as model
-from debug import reset, bold, italic
+from common import reset, bold, italic, dbg
 
 
 def print_arg_help():
@@ -59,11 +59,11 @@ if __name__ == "__main__":
 
             model.process(state, res)  # may mutate state
 
-            if state.location != last_loc:
-                last_loc = state.location
-                print(last_loc)  # TODO draw to canvas instead
+            if state.__repr__() != last_loc:
+                last_loc = state.__repr__()
+                dbg("STATE", state, override=True)
+                # TODO draw to opencv imshow canvas instead
 
-            ## TODO display information on this window
             opencv.imshow("screen", res)
             if (opencv.waitKey(1) & 0xFF) == ord("q"):
                 opencv.destroyAllWindows()
