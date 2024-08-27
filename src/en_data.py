@@ -38,18 +38,18 @@ dialog_chardata: char_dataset = palette_transfer(
     locations_palette,
 )
 
-# species_palette = [
-#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
-#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
-#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
-#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),  # used for bold
-# ]
-# species_charset = alphabet | set("2♂♀’-")
-# species_chardata: char_dataset = palette_transfer(
-#     species_charset,
-#     normal_fontmap,
-#     species_palette,
-# )
+species_palette = [
+    numpy.array([0x59, 0x71, 0x69], dtype=numpy.uint8),
+    numpy.array([0x28, 0x30, 0x28], dtype=numpy.uint8),
+    numpy.array([0xFD, 0xFD, 0xFD], dtype=numpy.uint8),
+    numpy.array([0xFF, 0xFF, 0xFF], dtype=numpy.uint8),  # used for bold
+]
+species_charset = alphabet | set("2♂♀’-")
+species_chardata: char_dataset = palette_transfer(
+    species_charset,
+    normal_fontmap,
+    species_palette,
+)
 
 # something that uses bold_fontmap (like level, gender)
 # etc ...

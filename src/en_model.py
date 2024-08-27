@@ -32,19 +32,16 @@ def process_dialog(state: TrackerState, dialog: list[str]):
 
             # check for trainer battle start
             case ["You", "are", "challenged", "by", *rest]:
-                # the "and" *should* always show up in the same frame--at least
-                # for vanilla trainer classes/names--even if the second trainer
-                # class/name doesn't
-                # -- worst comes to worst, we can add a check to reassign singles
-                # to doubles if no species is detected (via misalignment)
                 dbg("PATTERN", f"You are challenged by {" ".join(rest)}")
-                # we do not strictly need to update foes_left here because it is
-                # less critical to knowing when the battle ends unlike for wild
-                # battles -- also partly because we don't have a way to get it yet
+                # if needed, we can add a check to reassign singles to
+                # doubles if no species is detected (via misalignment)
                 if "and" in rest or "&" in "".join(rest):
                     state.view_type = ViewType.TRAINER_DOUBLE
                 else:
                     state.view_type = ViewType.TRAINER_SINGLE
+                # we do not strictly need to update foes_left here because it is
+                # less critical to knowing when the battle ends unlike for wild
+                # battles -- also partly because we don't have a way to get it yet
 
             # check for wild battle start
             case ["A", "wild", *rest, "appeared"]:
@@ -129,8 +126,54 @@ def process_frame(state: TrackerState, frame: numpy.ndarray):
 
         locat = " ".join(parse_text_row(frame[16:32, 8:120], locations_chardata, True))
         if locat in valids.locations:
-            state.location = locat
+            state.location = locat  # update location
+            # clearing this ensures that no encounter can be marked with wrong location
+            state.species = "", ""
         # dbg("LOCATION", locat)
+
+        ## other
+        pass
+
+    if (
+        state.view_type == ViewType.WILD_SINGLE
+        or state.view_type == ViewType.TRAINER_SINGLE
+    ):
+        ## species (singles alignment)
+
+        # we consider the left member of tuple to be the singles position
+        left = " ".join(parse_text_row(frame[24:40, 2:62], species_chardata))
+        match left:
+            case "":
+                pass  # shouldn't be changed during animations
+            case spec if spec in valids.species:
+                state.species = spec, ""  # clear right for singles
+        # dbg("SPECIES", left)
+
+        ## other
+        pass
+
+    if (
+        state.view_type == ViewType.WILD_DOUBLE
+        or state.view_type == ViewType.TRAINER_DOUBLE
+    ):
+        ## species (doubles alignment)
+
+        left, right = (
+            " ".join(parse_text_row(frame[33:49, 2:62], species_chardata)),
+            " ".join(parse_text_row(frame[4:20, 8:68], species_chardata)),
+        )
+        match left, right:
+            case "", "":
+                pass  # shouldn't be changed during animations
+            case (
+                l,  # only one of these can be "" at a time because
+                r,  # we hold on to the last species seen in-battle
+            ) if (l in valids.species or l == "") and (r in valids.species or r == ""):
+                state.species = l, r
+        # dbg("SPECIES", state.species)
+
+        ## other
+        pass
 
     # process others
     pass
