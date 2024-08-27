@@ -625,11 +625,11 @@ if __name__ == "__main__":
 """precise mapping between actual characters and normal font data (i.e. filenames)"""
 normal_fontmap = bidict()
 for i, x in enumerate(indexed_chars):
-    if x != None:  # unneeded (or invalid)
+    if x is not None:  # unneeded (or invalid)
         try:
             if normal_data_0[i] == "":
                 raise FilenameNotFoundError
-            if normal_data_0[i] == None:
+            if normal_data_0[i] is None:
                 raise CharacterDataNotFoundError
             normal_fontmap.put(x, normal_data_0[i], OnDup(key=RAISE, val=RAISE))
         except FilenameNotFoundError:
@@ -661,11 +661,11 @@ if __name__ == "__main__":
 """precise mapping between actual characters and bold font data (i.e. filenames)"""
 bold_fontmap = bidict()
 for i, x in enumerate(indexed_chars):
-    if x != None:  # unneeded (or invalid)
+    if x is not None:  # unneeded (or invalid)
         try:
             if bold_data_2[i] == "":
                 raise FilenameNotFoundError
-            if bold_data_2[i] == None:
+            if bold_data_2[i] is None:
                 raise CharacterDataNotFoundError
             bold_fontmap.put(x, bold_data_2[i], OnDup(key=RAISE, val=RAISE))
         except FilenameNotFoundError:

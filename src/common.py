@@ -5,18 +5,18 @@ import numpy
 from numpy import ndarray  # to keep annotations shorter
 from enum import Enum
 from dataclasses import dataclass, field  # dataclasses are effectively structs
-from font import charset
+from font import char_dataset
 
 
 ### MODEL-AGNOSTIC TEXT PARSING
 
 
-def parse_text(region: ndarray, chardat: charset):
+def parse_text(region: ndarray, chardata: char_dataset, masked: bool = False):
     """
     Takes a cropped region of an image and parses it for text that matches the characters passed to it.
 
     `region` : a portion of a 3-channel image, whose height should be a multiple of 16\n
-    `charset` : an iterable associating characters with their image/mask data\n
+    `chardata` : an iterable associating characters with their image/mask data\n
     `threshold` (optional) : a minimum correlation for it to match when parsed\n
     """
     ROW_HEIGHT = 16
@@ -26,26 +26,26 @@ def parse_text(region: ndarray, chardat: charset):
     assert region.ndim == 3  # 3-channel image
     # split by row (was supposed to be parallelized)
     stacks = [region[ROW_HEIGHT * i : ROW_HEIGHT * (i + 1)] for i in range(rows)]
-    results = [parse_text_row(haystack, chardat) for haystack in stacks]
+    results = [parse_text_row(haystack, chardata, masked) for haystack in stacks]
     return list(chain(*results))
 
 
-def parse_text_row(haystack: ndarray, chardat: charset):
+def parse_text_row(haystack: ndarray, chardata: char_dataset, masked: bool = False):
     """
-    Processes a single row of text -- process_text() calls this function under the hood
-    see `process_text()` for parameters
+    Processes a single row of text -- parse_text() calls this function under the hood
+    see `parse_text()` for parameters -- mildly faster than parse_text() for single-row
     """
     # negative indices don't show up naturally
     UNASSIGNED = -1
     OCCUPIED = -2
 
     chars, char_sizes, char_scores = [], [], []
-    # iterate over characters in charset, associate them with match scores
-    for _, char, needle, mask in chardat:
+    # iterate over characters, associate them with match scores
+    for _, char, needle, mask in chardata:
         chars.append(char)  # character being matched
         char_sizes.append(needle.shape[1])  # width of character (height is fixed)
         score = opencv.matchTemplate(
-            haystack, needle, opencv.TM_CCOEFF_NORMED, None, mask
+            haystack, needle, opencv.TM_CCOEFF_NORMED, None, mask if masked else None
         ).flat  # vertical axis is unnecessary, row height is fixed
         char_scores.append(
             # fixing the size to be consistent (pad with lowest normed score)
@@ -84,8 +84,14 @@ def parse_text_row(haystack: ndarray, chardat: charset):
 ### MODEL TYPES
 
 
-class BattleType(Enum):
-    NONE = -1
+class ViewType(Enum):
+    """
+    different types of views in the game (with corresponding regions to search for text)
+    """
+
+    PC_BOX = -2
+    """managing members in the box"""
+    OVERWORLD = -1
     """not in battle"""
     TRAINER_SINGLE = 0
     """singles trainer battle"""
@@ -104,7 +110,9 @@ enc_t = tuple[
     dict[spec_t, int],  # per-location mapping from species to encounter frequency
     spec_t | None,  # per-location canon encounter (if caught)
 ]
+"""(frequencies: dict[spec_t, int], canon: spec_t | None)"""
 member_t = tuple[loc_t, spec_t]
+"""(location: loc_t, species: spec_t)"""
 
 
 # actions are scuffed (functional-style enums would make this much simpler)
@@ -174,29 +182,33 @@ class EditEnc:
 action_t = ToParty | ToBoxed | PartyToDead | FailCanonEnc | EditEnc
 
 
-@dataclass
+@dataclass(repr=True)
 class TrackerState:
     """global tracker state maintained by model -- treat as readonly outside en_model"""
+    # Note: The .__repr__() generated for this is solely for debugging -- and as such, we
+    # may or may not include various fields from that representation at our convenience.
+    # In short, expect the .__repr__() or .__str__() methods to have unstable behavior.
 
     # TODO serialize/deserialize tracker state to save progress between sessions
 
-    ### stuff that doesn't need to be stored when saving
+    ### stuff that will not be stored when saving state on exit
 
-    # TODO actually determine battle type properly
-    battle_type: BattleType = BattleType.NONE  # see BattleType enum for details
-    """current battle type (NONE in overworld)"""
+    view_type: ViewType = field(default=ViewType.OVERWORLD, repr=True)
+    """current view type (see documentation for the type)"""
 
-    # TODO handle double battles (later TODO support)
-    # TODO validate with real values
-    species: str = ""  # should be a member of valids.species
-    """opposing species currently in battle"""
+    foes_left: int = field(default=0, repr=True)
+    """how many pokemon are left in the battle -- should always be 0 in overworld"""
 
-    location: loc_t = ""  # should be a member of valids.locations
-    """current location"""
+    species: tuple[spec_t, spec_t] = field(default=("", ""), repr=True)
+    """opposing species last seen in battle -- holds last-seen value until location changes"""
 
-    ### stuff that needs to be stored on exit when saving state
+    ### stuff that will be stored when saving state on exit
 
-    encounters: dict[loc_t, enc_t] = field(default_factory=dict, repr=False)
+    location: loc_t = field(default="???", repr=True)
+    """current location -- this should be initialized with a default value corresponding to the language"""
+    # shouldn't be strictly necessary to save, but only assuming users start the tracker before opening the game
+
+    encounters: dict[loc_t, enc_t] = field(default_factory=dict, repr=True)
     """table of encounter data thus far -- stores canon encounter & frequencies"""
     # dict maintains insertion order as of Python 3.7, which is convenient for us because
     # we will only insert dict entries when a species is first encountered in that area
@@ -221,14 +233,14 @@ class TrackerState:
 ### EXTRA STUFF
 
 
-def dbg(category, item, override=False):
-    if override or item.__str__() != "":
-        print(f"{category}:  {item}")
-
-
 reset = "\033[0m"
 bold = "\033[1m"
 italic = "\033[3m"
+
+
+def dbg(category, item, override=False):
+    if override or (item is not None and item.__str__() != ""):
+        print(f"{bold}{category}: {reset} {item}")
 
 
 class FilenameNotFoundError(Exception):

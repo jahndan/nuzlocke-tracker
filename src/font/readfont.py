@@ -58,14 +58,14 @@ def sort_key(content: numpy.ndarray):
     return (content.shape[1] << 10) + int(content.sum())
 
 
-charset = list[tuple[int, str, numpy.ndarray, numpy.ndarray]]
+char_dataset = list[tuple[int, str, numpy.ndarray, numpy.ndarray]]
 """more specific type alias than `list` so it's clear what this is made
 of--the first is a sort key, the second is a single character, the third
 is 3-channel image data, the fourth is a 1-channel mask for said image"""
 
 
 # note: the fontmap is specific to, and should be supplied by, whatever model is using this function
-def palette_transfer(chars, fontmap, palette: list[numpy.ndarray]) -> charset:
+def palette_transfer(chars, fontmap, palette: list[numpy.ndarray]) -> char_dataset:
     """Associates requested characters with their image data from the fontmap and remaps palette indices to colors.
 
     `chars`: an iterable of characters for which the relevant data is requested
@@ -146,7 +146,7 @@ def process_font(fontfile_arr: numpy.ndarray, names: bidict[int, str]):
 
 def export_files(chars: dict, exports=None):
     """takes the map of char names and image data, uses that to export as files"""
-    if exports == None:
+    if exports is None:
         exports = chars.keys()
     for filename in exports:
         try:

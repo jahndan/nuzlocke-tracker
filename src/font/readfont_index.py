@@ -19,7 +19,7 @@ def iterprint(items: Iterable, tab=2):
 
 
 def prefix(prefix: str, elem: str | None):
-    return None if elem == None else f"{prefix}{elem}"
+    return None if elem is None else f"{prefix}{elem}"
 
 
 normal_namemap = bidict()  # populated lower down
@@ -690,7 +690,7 @@ dirty = False  # tracks if an error is raised, stops the actual maps from printi
 # mapping index <--> names but only add them if we have a filename for it
 for i, fname in enumerate(normal_data_0):
     # None -> no character data, "" -> currently unlabeled or whitespace
-    if fname != None and fname != "":
+    if fname is not None and fname != "":
         try:
             # key duplication isn't possible because they're list indices
             normal_namemap.put(i, fname)
@@ -702,10 +702,10 @@ for i, fname in enumerate(normal_data_0):
                 raise
             dirty = True
 
-# mapping index <--> names but only add them if name != "" and name  != None
+# mapping index <--> names but only add them if we have a filename for it
 for i, fname in enumerate(bold_data_2):
     # None -> no character data, "" -> currently unlabeled or whitespace
-    if fname != None and fname != "":
+    if fname is not None and fname != "":
         try:
             # key duplication isn't possible because they're list indices
             bold_namemap.put(i, fname)
