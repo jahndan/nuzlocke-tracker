@@ -16,7 +16,7 @@ locations_palette = [
     numpy.array([0xFF, 0xFF, 0xFF], dtype=numpy.uint8),
     numpy.array([0xA3, 0x92, 0x92], dtype=numpy.uint8),
     numpy.array([0x01, 0x01, 0x01], dtype=numpy.uint8),
-    numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),
+    numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),  # used for bold
 ]
 locations_charset = alphabet | numbers | set("’")
 locations_chardata: char_dataset = palette_transfer(
@@ -25,11 +25,24 @@ locations_chardata: char_dataset = palette_transfer(
     locations_palette,
 )
 
+dialog_palette = [
+    numpy.array([0xFD, 0xFD, 0xFD], dtype=numpy.uint8),
+    numpy.array([0xAA, 0xA2, 0xA2], dtype=numpy.uint8),
+    numpy.array([0x59, 0x51, 0x51], dtype=numpy.uint8),
+    numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),  # used for bold
+]
+dialog_charset = alphabet | numbers | set("&")
+dialog_chardata: char_dataset = palette_transfer(
+    dialog_charset,
+    normal_fontmap,
+    locations_palette,
+)
+
 # species_palette = [
 #     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
 #     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
 #     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
-#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
+#     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),  # used for bold
 # ]
 # species_charset = alphabet | set("2♂♀’-")
 # species_chardata: char_dataset = palette_transfer(
