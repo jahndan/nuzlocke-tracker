@@ -1,6 +1,11 @@
 # nuzlocke-tracker
 
-cross-platform text-recognition-based nuzlocke tracker tool (WIP for gen iv)
+cross-platform text-recognition-based nuzlocke tracker tool (WIP for platinum)
+
+user note: either `config.defaults.json` or `config.json` may be edited to change the configuration of the tracker - `config.json` takes priority, so you can edit that to keep the default settings backed up in `config.defaults.json`, or you can just edit `config.defaults.json` directly if you don't care
+
+dev note: duplicate `config.defaults.json` as `config.json` to change stuff locally without affecting the defaults for users
+
 
 we're using pipenv to run this project (`pipenv install` to install dependencies, and `pipenv run python` where you would normally use `python` to run scripts), but this may work just fine if you have the appropriate packages availabe in another manner
 

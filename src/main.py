@@ -4,7 +4,7 @@ import cv2 as opencv
 from mss import mss
 import en_model as model
 from common import reset, bold, italic, dbg
-from keyboard_input import globalHotkeys
+from keyboard_input import globalHotkeys, event_queue
 
 
 def print_arg_help():
@@ -62,6 +62,7 @@ if __name__ == "__main__":
             )
 
             model.process_frame(state, res)  # may mutate state
+            # TODO use event_queue
 
             if state.__repr__() != last_loc:
                 last_loc = state.__repr__()

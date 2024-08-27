@@ -1,3 +1,6 @@
+# personal config
+config.json
+
 # anything that could possibly show up
 .python-version
 .env
@@ -28,3 +31,4 @@ MANIFEST
 .DS_Store
 .idea/
 .vscode
+__pycache__
