@@ -5,7 +5,7 @@ import numpy
 from numpy import ndarray  # to keep annotations shorter
 from enum import Enum
 from dataclasses import dataclass, field  # dataclasses are effectively structs
-from font import char_dataset
+from font import *
 
 
 ### MODEL-AGNOSTIC TEXT PARSING

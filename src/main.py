@@ -51,6 +51,11 @@ if __name__ == "__main__":
         sct = mss()
         bounding_box = {"width": width, "height": height, "left": left, "top": top}
 
+        # initialize the tracker display canvas
+        canvas = numpy.full((384, 256, 3), model.display_palette[0], dtype=numpy.uint8)
+        model.draw_to_display(state, canvas)
+        opencv.imshow("tracker", canvas)
+
         # temp: solely to make debugging less cluttered
         last_loc = model.TrackerState(view_type="")  # fake state so it prints initially
 
@@ -65,10 +70,12 @@ if __name__ == "__main__":
             if event_queue:  # implicitly evaluates false if empty
                 model.handle_event(state, event_queue.popleft())
 
+            # if the state has changed, update the display canvas
             if state.__repr__() != last_loc:
                 last_loc = state.__repr__()
                 dbg("STATE", state, override=True)
-                # TODO draw to opencv imshow canvas instead
+                model.draw_to_display(state, canvas)
+                opencv.imshow("tracker", canvas)
 
             opencv.imshow("screen", res)
             if (opencv.waitKey(1) & 0xFF) == ord("q"):
