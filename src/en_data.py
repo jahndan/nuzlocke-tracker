@@ -54,6 +54,13 @@ species_chardata: char_dataset = palette_transfer(
 # something that uses bold_fontmap (like level, gender)
 # etc ...
 
+display_palette = locations_palette  # borrowing this palette
+display_charset = alphabet | numbers | set("’(),")  # add punctuation
+display_chardata = palette_transfer(
+    display_charset,
+    normal_fontmap,
+    display_palette,
+)
 
 # TODO json-ify the long lists that don't need to be loaded for the full duration
 # of the program and use some kind of context manager `with <context>:`

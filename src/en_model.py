@@ -202,6 +202,9 @@ def process_frame(state: TrackerState, frame: numpy.ndarray):
     pass
 
 
+## INPUT EVENT HANDLING
+
+
 def handle_event(state: TrackerState, event: str):
     """
     Handles user input events and mutates state accordingly
@@ -344,3 +347,69 @@ def _unmark_canon_enc(state: TrackerState, location: loc_t, species: spec_t):
         canon_enc = None
     # reassign the encounter table entry
     state.encounters[location] = freqs, canon_enc
+
+
+### CANVAS MANAGEMENT
+
+
+def _draw_str(slice: ndarray, input: str):
+    """
+    Helper for draw_to_display()
+    -- clears the slice of the canvas passed in
+    -- uses the charset provided to draw the input string on the canvas (upper left)
+    -- pass in a slice of the canvas to position the text (mutating the canvas)
+    """
+    slice[:, :, :] = display_palette[0]  # clear this slice of the canvas
+    char_images = {char: img for _, char, img, _ in display_chardata}
+    char_images[" "] = numpy.full((16, 5, 3), display_palette[0], dtype=numpy.uint8)
+    for line in input.split("\n"):
+        try:
+            line_images = [char_images[char] for char in line]
+        except:
+            chars = list(zip(*display_chardata))[1]
+            chars.append(" ")
+            print(f"'{line}' contains characters not found in display_chardata")
+            print(
+                "Consider adding the missing characters:",
+                set(line) - set(chars),
+                "to the charset.",
+            )
+        else:
+            x = 0
+            for img in line_images:
+                w = img.shape[1]
+                slice[:16, x : x + w] = img
+                x += w
+
+
+def _pad(s: str):
+    if s == "":
+        return "(none)"
+    return s
+
+
+def draw_to_display(state: TrackerState, canvas: ndarray):
+    """
+    en_model's image representation of state -- mutates canvas but not state
+    """
+    # Location info
+    location_cv = canvas[4:20, 4:-4]
+    _draw_str(location_cv, state.location)
+
+    # Battle + species info
+    battle_cv = canvas[22:54, 4:-4]
+    match state.view_type:
+        case ViewType.OVERWORLD | ViewType.PC_BOX:
+            _draw_str(battle_cv, "Not in battle")
+        case ViewType.WILD_SINGLE:
+            _draw_str(battle_cv[:16], "Wild battle (singles)")
+            _draw_str(battle_cv[16:], _pad(state.species[0]))
+        case ViewType.TRAINER_SINGLE:
+            _draw_str(battle_cv[:16], "Trainer battle (singles)")
+            _draw_str(battle_cv[16:], _pad(state.species[0]))
+        case ViewType.WILD_DOUBLE:
+            _draw_str(battle_cv[:16], "Wild battle (doubles)")
+            _draw_str(battle_cv[16:], f"{_pad(state.species[0])}, {_pad(state.species[1])}")
+        case ViewType.TRAINER_DOUBLE:
+            _draw_str(battle_cv[:16], "Trainer battle (doubles)")
+            _draw_str(battle_cv[16:], f"{_pad(state.species[0])}, {_pad(state.species[1])}")
