@@ -1,6 +1,6 @@
 import numpy
 from en_fontmap import normal_fontmap, bold_fontmap
-from font import palette_transfer, charset
+from font import palette_transfer, char_dataset
 
 ### minimal sets of chars that can be useful in general
 lower_alpha = set("abcdefghijklmnopqrstuvwxyz")
@@ -18,8 +18,9 @@ locations_palette = [
     numpy.array([0x01, 0x01, 0x01], dtype=numpy.uint8),
     numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),
 ]
-locations_charset: charset = palette_transfer(
-    alphabet | numbers | set("’"),
+locations_charset = alphabet | numbers | set("’")
+locations_chardata: char_dataset = palette_transfer(
+    locations_charset,
     normal_fontmap,
     locations_palette,
 )
@@ -30,8 +31,9 @@ locations_charset: charset = palette_transfer(
 #     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
 #     numpy.array([0x?, 0x?, 0x?], dtype=numpy.uint8),
 # ]
-# species: charset = palette_transfer(
-#     alphabet | set("2♂♀’-"),
+# species_charset = alphabet | set("2♂♀’-")
+# species_chardata: char_dataset = palette_transfer(
+#     species_charset,
 #     normal_fontmap,
 #     species_palette,
 # )

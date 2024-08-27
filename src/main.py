@@ -24,7 +24,9 @@ if __name__ == "__main__":
         # state = model.TrackerState(stuff from savefile)
         pass
     else:
-        state = model.TrackerState()  # initialize a new tracker state without savefile
+        # initialize a new tracker state assuming a new game
+        state = model.TrackerState(location="Twinleaf Town")
+        # assumed english for now since no other models exist yet
 
     ## TODO replace this with a more flexible way of passing args than sys.argv
     ## also allow user to specify language (currently only English supported)
@@ -48,7 +50,8 @@ if __name__ == "__main__":
         sct = mss()
         bounding_box = {"width": width, "height": height, "left": left, "top": top}
 
-        last_loc = ""  # temp
+        # temp: solely to make debugging less cluttered
+        last_loc = model.TrackerState(view_type="")  # fake state so it prints initially
 
         while True:
             gbra = numpy.array(sct.grab(bounding_box))
@@ -57,7 +60,7 @@ if __name__ == "__main__":
                 img, None, fx=scale, fy=scale, interpolation=opencv.INTER_NEAREST
             )
 
-            model.process(state, res)  # may mutate state
+            model.process_frame(state, res)  # may mutate state
 
             if state.__repr__() != last_loc:
                 last_loc = state.__repr__()
