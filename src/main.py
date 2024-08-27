@@ -62,7 +62,8 @@ if __name__ == "__main__":
             )
 
             model.process_frame(state, res)  # may mutate state
-            # TODO use event_queue
+            if event_queue:  # implicitly evaluates false if empty
+                model.handle_event(state, event_queue.popleft())
 
             if state.__repr__() != last_loc:
                 last_loc = state.__repr__()

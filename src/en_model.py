@@ -177,3 +177,90 @@ def process_frame(state: TrackerState, frame: numpy.ndarray):
 
     # process others
     pass
+
+
+def handle_event(state: TrackerState, event: str):
+    """
+    Handles user input events and mutates state accordingly
+    Note: state will be mutated if the input is valid in-context
+    """
+    action = decorate_event(state, event)
+    dbg("ACTION", action)
+    # actually handle them in-model
+    pass
+
+
+def decorate_event(state: TrackerState, event: str):
+    """
+    Decorates user input events with state-based context
+    Note: state is readonly in this context (no mutation)
+    """
+    match (event, state.view_type):
+
+        # catching a member right now (singles)
+        case ("ToParty", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
+            spec = state.species[0]
+            if spec != "":
+                return ToParty((state.location, spec), True)
+        case ("ToBoxed", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
+            spec = state.species[0]
+            if spec != "":
+                return ToBoxed((state.location, spec), True)
+
+        # not catching a member--mark canon (singles)
+        case "FailEnc", ViewType.WILD_SINGLE if state.foes_left == 1:  # redundant if
+            spec = state.species[0]
+            if spec != "":
+                return FailCanonEnc((state.location, spec))
+
+        # catching a member right now (doubles)
+        case ("ToParty", ViewType.WILD_DOUBLE) if state.foes_left == 1:
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToParty((state.location, spec), True)
+        case ("ToBoxed", ViewType.WILD_DOUBLE) if state.foes_left == 1:
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToBoxed((state.location, spec), True)
+
+        # not catching a member--mark canon (doubles)
+        case "FailEnc", ViewType.WILD_DOUBLE if state.foes_left == 1:
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return FailCanonEnc((state.location, spec))
+
+        # just caught a member in the last battle
+        case ("ToParty", ViewType.OVERWORLD):
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToParty((state.location, spec), True)
+        case ("ToBoxed", ViewType.OVERWORLD):
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToBoxed((state.location, spec), True)
+
+        # not catching a member--mark canon (last battle)
+        case ("FailEnc", ViewType.OVERWORLD):
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return FailCanonEnc((state.location, spec))
+
+        # moving members around between party/box
+        case ("ToParty", ViewType.PC_BOX):
+            pass  # not ready for handling yet
+        case ("ToBoxed", ViewType.PC_BOX):
+            pass  # not ready for handling yet
+
+        # member just died (in-battle)
+        case ("ToDead", _):
+            pass  # not ready for handling yet
+
+        # replace an encounter info (trade/token)
+        case ("EditEnc", ViewType.PC_BOX):
+            pass  # not ready for handling yet
