@@ -33,6 +33,16 @@ def on_EditEnc():
     event_queue.append("EditEnc")
 
 
+def on_Undo():
+    dbg("HOTKEY", "Undo action")
+    event_queue.append("UndoAction")
+
+
+def on_Redo():
+    dbg("HOTKEY", "Redo action")
+    event_queue.append("RedoAction")
+
+
 try:
     config = json.load(open("config.json")).get("keybinds")
 except:
@@ -48,6 +58,8 @@ hotkeys[config.get("Send to box")] = on_ToBoxed
 hotkeys[config.get("Mark dead")] = on_PartyToDead
 hotkeys[config.get("Fail the encounter")] = on_FailEnc
 hotkeys[config.get("Edit an encounter")] = on_EditEnc
+hotkeys[config.get("Undo action")] = on_Undo
+hotkeys[config.get("Redo action")] = on_Redo
 
 globalHotkeys = keyboard.GlobalHotKeys(hotkeys)
 globalHotkeys.start()

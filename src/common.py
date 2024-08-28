@@ -202,6 +202,9 @@ class TrackerState:
     species: tuple[spec_t, spec_t] = field(default=("", ""), repr=True)
     """opposing species last seen in battle -- holds last-seen value until location changes"""
 
+    encounters_updated: bool = field(default=False, repr=False)
+    """purely for housekeeping -- update encounters to track wild encounters once"""
+
     ### stuff that will be stored when saving state on exit
 
     location: loc_t = field(default="???", repr=True)
@@ -214,20 +217,96 @@ class TrackerState:
     # we will only insert dict entries when a species is first encountered in that area
     # which makes it clear to the user which encounter was caught (or supposed to be)
 
-    party: set[member_t] = field(default_factory=set, repr=False)
+    party: set[member_t] = field(default_factory=set, repr=True)
     """members currently in party -- should be constrained to 6 members"""
 
-    boxed: set[member_t] = field(default_factory=set, repr=False)
+    boxed: set[member_t] = field(default_factory=set, repr=True)
     """members currently in box -- only include living members"""
 
-    dead: set[member_t] = field(default_factory=set, repr=False)
+    dead: set[member_t] = field(default_factory=set, repr=True)
     """members currently in cemetery -- members should only arrive from party"""
 
-    undo_history: deque[action_t] = field(default_factory=deque, repr=False)
-    """undo action stack -- append/pop from right only"""
+    undo_history: deque[action_t] = field(default_factory=deque, repr=True)
+    """stack of actions that can be undone -- append/pop from right only"""
 
-    redo_history: deque[action_t] = field(default_factory=deque, repr=False)
-    """redo action stack -- cleared on new action"""
+    redo_history: deque[action_t] = field(default_factory=deque, repr=True)
+    """stack of actions that can be redone -- cleared on new action"""
+
+
+def decorate_event(state: TrackerState, event: str):
+    """
+    Decorates user input events with state-based context
+    Note: state is readonly in this context (no mutation)
+    """
+    match (event, state.view_type):
+
+        # catching a member right now (singles)
+        case ("ToParty", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
+            spec = state.species[0]
+            if spec != "":
+                return ToParty((state.location, spec), True)
+        case ("ToBoxed", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
+            spec = state.species[0]
+            if spec != "":
+                return ToBoxed((state.location, spec), True)
+
+        # not catching a member--mark canon (singles)
+        case "FailEnc", ViewType.WILD_SINGLE if state.foes_left == 1:  # redundant if
+            spec = state.species[0]
+            if spec != "":
+                return FailCanonEnc((state.location, spec))
+
+        # catching a member right now (doubles)
+        case ("ToParty", ViewType.WILD_DOUBLE) if state.foes_left == 1:
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToParty((state.location, spec), True)
+        case ("ToBoxed", ViewType.WILD_DOUBLE) if state.foes_left == 1:
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToBoxed((state.location, spec), True)
+
+        # not catching a member--mark canon (doubles)
+        case "FailEnc", ViewType.WILD_DOUBLE if state.foes_left == 1:
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return FailCanonEnc((state.location, spec))
+
+        # just caught a member in the last battle
+        case ("ToParty", ViewType.OVERWORLD):
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToParty((state.location, spec), True)
+        case ("ToBoxed", ViewType.OVERWORLD):
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return ToBoxed((state.location, spec), True)
+
+        # not catching a member--mark canon (last battle)
+        case ("FailEnc", ViewType.OVERWORLD):
+            left, right = state.species
+            spec = left if left != "" else right
+            if spec != "":
+                return FailCanonEnc((state.location, spec))
+
+        # moving members around between party/box
+        case ("ToParty", ViewType.PC_BOX):
+            pass  # not ready for handling yet
+        case ("ToBoxed", ViewType.PC_BOX):
+            pass  # not ready for handling yet
+
+        # member just died (in-battle)
+        case ("ToDead", _):
+            pass  # not ready for handling yet
+
+        # replace an encounter info (trade/token)
+        case ("EditEnc", ViewType.PC_BOX):
+            pass  # not ready for handling yet
 
 
 ### EXTRA STUFF
