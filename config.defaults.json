@@ -4,6 +4,8 @@
         "Send to box": "b",
         "Mark dead": "d",
         "Fail the encounter": "f",
-        "Edit an encounter": "<shift>+e"
+        "Edit an encounter": "<shift>+e",
+        "Undo action": "<shift>+z",
+        "Redo action": "<shift>+y"
     }
 }

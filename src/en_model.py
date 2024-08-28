@@ -70,6 +70,7 @@ def process_dialog(state: TrackerState, dialog: list[str]):
                 state.foes_left += -1
                 if state.foes_left == 0:
                     state.view_type = ViewType.OVERWORLD
+                    state.encounters_updated = False
 
             # flight exit
             case ["The", "wild", *rest, "fled"]:
@@ -77,18 +78,21 @@ def process_dialog(state: TrackerState, dialog: list[str]):
                 state.foes_left += -1
                 if state.foes_left == 0:
                     state.view_type = ViewType.OVERWORLD
+                    state.encounters_updated = False
 
             # run exit
             case ["Got", "away", "safely"]:
                 dbg("PATTERN", "Got away safely")
                 state.foes_left = 0
                 state.view_type = ViewType.OVERWORLD
+                state.encounters_updated = False
 
             # bag exit
             case ["Gotcha", *rest, "was", "caught"]:
                 dbg("PATTERN", f"Gotcha! {" ".join(rest)}was caught!")
                 state.foes_left = 0
                 state.view_type = ViewType.OVERWORLD
+                state.encounters_updated = False
 
             # TODO other edge cases
             # teleport?
@@ -129,6 +133,7 @@ def process_frame(state: TrackerState, frame: numpy.ndarray):
             state.location = locat  # update location
             # clearing this ensures that no encounter can be marked with wrong location
             state.species = "", ""
+            state.encounters_updated = False
         # dbg("LOCATION", locat)
 
         ## other
@@ -148,6 +153,15 @@ def process_frame(state: TrackerState, frame: numpy.ndarray):
             case spec if spec in valids.species:
                 state.species = spec, ""  # clear right for singles
         # dbg("SPECIES", left)
+
+        # autotracking of encounter data
+        if not state.encounters_updated and state.view_type == ViewType.WILD_SINGLE:
+            spec = state.species[0]
+            if state.encounters.get(state.location) is None:
+                state.encounters[state.location] = dict(), None
+            freqs = (state.encounters[state.location])[0]
+            freqs[spec] = freqs[spec] + 1 if spec in freqs else 1
+            state.encounters_updated = True
 
         ## other
         pass
@@ -172,6 +186,15 @@ def process_frame(state: TrackerState, frame: numpy.ndarray):
                 state.species = l, r
         # dbg("SPECIES", state.species)
 
+        # autotracking of encounter data
+        if not state.encounters_updated and state.view_type == ViewType.WILD_DOUBLE:
+            for spec in state.species:
+                if state.encounters.get(state.location) is None:
+                    state.encounters[state.location] = dict(), None
+                freqs = (state.encounters[state.location])[0]
+                freqs[spec] = freqs[spec] + 1 if spec in freqs else 1
+            state.encounters_updated = True
+
         ## other
         pass
 
@@ -184,83 +207,140 @@ def handle_event(state: TrackerState, event: str):
     Handles user input events and mutates state accordingly
     Note: state will be mutated if the input is valid in-context
     """
-    action = decorate_event(state, event)
-    dbg("ACTION", action)
-    # actually handle them in-model
-    pass
+    match event:
+        case "UndoAction":
+            if state.undo_history:
+                action = state.undo_history.pop()
+                dbg("UNDO", action)
+                undo_action(state, action)
+        case "RedoAction":
+            if state.redo_history:
+                action = state.redo_history.pop()
+                dbg("REDO", action)
+                redo_action(state, action)
+        case _:
+            action = decorate_event(state, event)
+            dbg("ACTION", action)
+            do_action(state, action)
 
 
-def decorate_event(state: TrackerState, event: str):
+def do_action(state: TrackerState, action: action_t):
+    """perform an action -- clearing the redo stack"""
+    # never accept a double append
+    if not state.undo_history or action != state.undo_history[-1]:
+        redo_action(state, action)  # where we actually perform the action
+    # clear the redo stack (new action wipes redoable history)
+    state.redo_history.clear()
+
+
+def redo_action(state: TrackerState, action: action_t):
+    """perform an action -- without clearing the redo stack"""
+    match action:
+        # moving around members
+        case PartyToDead((location, species)):
+            # TODO handle
+            pass
+        case ToParty((location, species), False):
+            # TODO handle
+            pass
+        case ToBoxed((location, species), False):
+            # TODO handle
+            pass
+        # encounters
+        case ToParty((location, species), True):
+            # mark canon if applicable (maybe we should err if canon was already set)
+            _mark_canon_enc(state, location, species)
+            # add the member to party
+            state.party.add((location, species))
+        case ToBoxed((location, species), True):
+            # mark canon if applicable (maybe we should err if canon was already set)
+            _mark_canon_enc(state, location, species)
+            # add the member to boxed
+            state.boxed.add((location, species))
+        case FailCanonEnc((location, species)):
+            # mark canon if applicable (less important if canon is already set)
+            _mark_canon_enc(state, location, species)
+        case EditEnc((old_location, old_species), (new_location, new_species)):
+            # TODO handle
+            pass
+        case _:  # non-actions
+            return  # do not affect the undo/redo stacks for non-actions
+    # push the action to undo stack
+    state.undo_history.append(action)
+
+
+def undo_action(state: TrackerState, action: action_t):
+    match action:
+        # moving around members
+        case PartyToDead((location, species)):
+            # TODO handle
+            pass
+        case ToParty((location, species), False):
+            # TODO handle
+            pass
+        case ToBoxed((location, species), False):
+            # TODO handle
+            pass
+        # encounters
+        case ToParty((location, species), True):
+            # unmark canon if applicable
+            _unmark_canon_enc(state, location, species)
+            # not using discard because it shouldn't be possible to error
+            state.party.remove((location, species))
+        case ToBoxed((location, species), True):
+            # unmark canon if applicable
+            _unmark_canon_enc(state, location, species)
+            # not using discard because it shouldn't be possible to error
+            state.boxed.remove((location, species))
+        case FailCanonEnc((location, species)):
+            # unmark canon if applicable
+            _unmark_canon_enc(state, location, species)
+        case EditEnc((old_location, old_species), (new_location, new_species)):
+            # TODO handle
+            pass
+        case _:  # non-actions
+            return  # do not affect the undo/redo stacks for non-actions
+    # push the action to redo stack
+    state.redo_history.append(action)
+
+
+def _mark_canon_enc(state: TrackerState, location: loc_t, species: spec_t) -> bool:
     """
-    Decorates user input events with state-based context
-    Note: state is readonly in this context (no mutation)
+    helper function to mark an encounter as canon
+    -- does nothing if one is already set for that location
+    -- returns success: bool
     """
-    match (event, state.view_type):
+    # get existing encounter table entry or create a new one
+    enc_data = state.encounters.get(location)
+    # enc_data probably isn't None, but safety check anyway
+    freqs, canon_enc = enc_data if enc_data is not None else (dict(), None)
+    # only set canon if it is not already set
+    if canon_enc is None:
+        canon_enc = species
+    else:
+        dbg(
+            "WARN",
+            "attempted to mark a canon encounter:"
+            + f"{species} in {location}, but {canon_enc}"
+            + "is already marked there.",
+        )
+        return False
+    # reassign the encounter table entry
+    state.encounters[location] = freqs, canon_enc
+    return True
 
-        # catching a member right now (singles)
-        case ("ToParty", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
-            spec = state.species[0]
-            if spec != "":
-                return ToParty((state.location, spec), True)
-        case ("ToBoxed", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
-            spec = state.species[0]
-            if spec != "":
-                return ToBoxed((state.location, spec), True)
 
-        # not catching a member--mark canon (singles)
-        case "FailEnc", ViewType.WILD_SINGLE if state.foes_left == 1:  # redundant if
-            spec = state.species[0]
-            if spec != "":
-                return FailCanonEnc((state.location, spec))
-
-        # catching a member right now (doubles)
-        case ("ToParty", ViewType.WILD_DOUBLE) if state.foes_left == 1:
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToParty((state.location, spec), True)
-        case ("ToBoxed", ViewType.WILD_DOUBLE) if state.foes_left == 1:
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToBoxed((state.location, spec), True)
-
-        # not catching a member--mark canon (doubles)
-        case "FailEnc", ViewType.WILD_DOUBLE if state.foes_left == 1:
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return FailCanonEnc((state.location, spec))
-
-        # just caught a member in the last battle
-        case ("ToParty", ViewType.OVERWORLD):
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToParty((state.location, spec), True)
-        case ("ToBoxed", ViewType.OVERWORLD):
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToBoxed((state.location, spec), True)
-
-        # not catching a member--mark canon (last battle)
-        case ("FailEnc", ViewType.OVERWORLD):
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return FailCanonEnc((state.location, spec))
-
-        # moving members around between party/box
-        case ("ToParty", ViewType.PC_BOX):
-            pass  # not ready for handling yet
-        case ("ToBoxed", ViewType.PC_BOX):
-            pass  # not ready for handling yet
-
-        # member just died (in-battle)
-        case ("ToDead", _):
-            pass  # not ready for handling yet
-
-        # replace an encounter info (trade/token)
-        case ("EditEnc", ViewType.PC_BOX):
-            pass  # not ready for handling yet
+def _unmark_canon_enc(state: TrackerState, location: loc_t, species: spec_t):
+    """
+    helper function to unmark an encounter as canon
+    -- only unsets it if the species match
+    """
+    # get existing encounter table entry or create a new one
+    enc_data = state.encounters.get(location)
+    # enc_data cannot be None at this point, but safety check anyway
+    freqs, canon_enc = enc_data if enc_data is not None else (dict(), None)
+    # only unset canon if species match
+    if canon_enc is not None and canon_enc == species:
+        canon_enc = None
+    # reassign the encounter table entry
+    state.encounters[location] = freqs, canon_enc
