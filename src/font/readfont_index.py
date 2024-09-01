@@ -520,7 +520,7 @@ normal_data_0: list[str | None] = [
             "",
             "",
             "",
-            "",
+            "en.lower_e_acute",
             "",
             "",
             "",

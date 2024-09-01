@@ -26,7 +26,7 @@ def process_dialog(state: TrackerState, dialog: list[str]):
     if state.view_type == ViewType.OVERWORLD:
         match dialog:
             # check for pc boxes
-            case ["The", "Pokemon", "Storage", "System", "was", "accessed"]:
+            case ["The", "Pokémon", "Storage", "System", "was", "accessed"]:
                 dbg("PATTERN", f"The Pokemon Storage System was accessed")
                 state.view_type = ViewType.PC_BOX
 

@@ -31,7 +31,7 @@ dialog_palette = [
     numpy.array([0x59, 0x51, 0x51], dtype=numpy.uint8),
     numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),  # used for bold
 ]
-dialog_charset = alphabet | numbers | set("&")
+dialog_charset = alphabet | numbers | set("&é")
 dialog_chardata: char_dataset = palette_transfer(
     dialog_charset,
     normal_fontmap,
