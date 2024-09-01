@@ -469,7 +469,7 @@ indexed_chars = [
             None,
             None,
             None,
-            None,
+            "é",
             None,
             None,
             None,
