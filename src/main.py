@@ -3,7 +3,7 @@ import numpy
 import cv2 as opencv
 from mss import mss
 import en_model as model
-from common import reset, bold, italic, dbg
+from common import reset, bold, italic, debug_format
 from keyboard_input import globalHotkeys, event_queue
 
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         opencv.imshow("tracker", canvas)
 
         # temp: solely to make debugging less cluttered
-        last_loc = model.TrackerState(view_type="")  # fake state so it prints initially
+        prev_state = model.TrackerState()  # invalid state so it prints initially
 
         while True:
             gbra = numpy.array(sct.grab(bounding_box))
@@ -71,9 +71,10 @@ if __name__ == "__main__":
                 model.handle_event(state, event_queue.popleft())
 
             # if the state has changed, update the display canvas
-            if state.__repr__() != last_loc:
-                last_loc = state.__repr__()
-                dbg("STATE", state, override=True)
+            if state.__repr__() != prev_state:
+                prev_state = state.__repr__()
+                print(f"{bold}STATE{reset}")
+                print(debug_format(state))
                 model.draw_to_display(state, canvas)
                 opencv.imshow("tracker", canvas)
 

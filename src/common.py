@@ -4,7 +4,8 @@ import cv2 as opencv
 import numpy
 from numpy import ndarray  # to keep annotations shorter
 from enum import Enum
-from dataclasses import dataclass, field  # dataclasses are effectively structs
+from dataclasses import dataclass, field, asdict  # dataclasses are effectively structs
+import yaml  # for pretty debug printing
 from font import *
 
 
@@ -81,7 +82,7 @@ def parse_text_row(haystack: ndarray, chardata: char_dataset, masked: bool = Fal
     return words
 
 
-### MODEL TYPES
+### MODEL-AGNOSTIC TYPES
 
 
 class ViewType(Enum):
@@ -89,30 +90,45 @@ class ViewType(Enum):
     different types of views in the game (with corresponding regions to search for text)
     """
 
-    PC_BOX = -2
-    """managing members in the box"""
-    OVERWORLD = -1
+    PC_BOX = -4
+    """managing members in the pkmn center box"""
+    SUMMARY_PARTY = -3
+    """sometimes needed for nickname auto-tracking"""
+    PARTY_MENU = -2
+    """sometimes needed for nickname auto-tracking"""
+    NICKNAME = -1
+    """nicknaming screen -- intermediary screen transition from wild to overworld"""
+    OVERWORLD = 0
     """not in battle"""
-    TRAINER_SINGLE = 0
-    """singles trainer battle"""
     WILD_SINGLE = 1
     """singles wild encounter"""
-    TRAINER_DOUBLE = 2
-    """doubles trainer battle"""
+    TRAINER_SINGLE = 2
+    """singles trainer battle"""
     WILD_DOUBLE = 3
     """doubles wild encounter (only in specific locations)"""
+    TRAINER_DOUBLE = 4
+    """doubles trainer battle"""
 
 
 # typedef vomit
 loc_t = str
 spec_t = str
-enc_t = tuple[
-    dict[spec_t, int],  # per-location mapping from species to encounter frequency
-    spec_t | None,  # per-location canon encounter (if caught)
-]
-"""(frequencies: dict[spec_t, int], canon: spec_t | None)"""
-member_t = tuple[loc_t, spec_t]
-"""(location: loc_t, species: spec_t)"""
+name_t = str
+
+
+@dataclass
+class EncounterRegistry:
+    frequencies: dict[
+        spec_t, int
+    ]  # per-location mapping from species to encounter frequency
+    canon: spec_t | None  # per-location canon encounter (if caught)
+
+
+@dataclass
+class member_t:
+    location: loc_t
+    species: spec_t
+    nickname: name_t | None
 
 
 # actions are scuffed (functional-style enums would make this much simpler)
@@ -164,19 +180,19 @@ class FailCanonEnc:
     # be verified before processing this action
 
 
-# TODO outline/add infrastructure for handling gift pokemon/other free encounters
+# TODO outline/add infrastructure for handling gift pkmn/other free encounters
 
 
-# this one should only be necessary for tokens, which may not be relevant to all users
-# thus we probably don't have to deal with updating canon listings
+# this will be needed for updating nicknames and also for tokens, which may
+# not be relevant to all users -- should only happen in box for simplicity?
 @dataclass
 class EditEnc:
-    """replace the species associated with a specific encounter"""
+    """replace the species associated with a specific encounter, or add a non-canon one"""
 
-    old_member: member_t
+    old_member: member_t | None
     new_member: member_t
 
-    # straightforward recovery (replace new with old)
+    # straightforward recovery (replace new with old, or delete if old is None)
 
 
 action_t = ToParty | ToBoxed | PartyToDead | FailCanonEnc | EditEnc
@@ -197,12 +213,23 @@ class TrackerState:
     """current view type (see documentation for the type)"""
 
     foes_left: int = field(default=0, repr=True)
-    """how many pokemon are left in the battle -- should always be 0 in overworld"""
+    """how many pkmn are left in the battle -- should always be 0 in overworld"""
 
-    species: tuple[spec_t, spec_t] = field(default=("", ""), repr=True)
-    """opposing species last seen in battle -- holds last-seen value until location changes"""
+    last_species: tuple[spec_t, spec_t] = field(default=("", ""), repr=True)
+    """opposing-side species last seen in battle -- holds last-seen value until location changes"""
 
-    encounters_updated: bool = field(default=False, repr=False)
+    our_species: tuple[spec_t, spec_t] = field(default=("", ""), repr=True)
+    """player-side species last seen in battle"""
+    # currently matches opposing-side behavior, but only because we have no reason not to
+    # behavior may change to not match last_species if need be later
+
+    last_nickname: name_t | None = field(default=None, repr=True)
+    """last nickname entered -- might be redundant"""
+
+    adding_encounter: bool = field(default=False, repr=True)
+    """purely for housekeeping -- in the process of adding an encounter"""
+
+    encounters_updated: bool = field(default=False, repr=True)
     """purely for housekeeping -- update encounters to track wild encounters once"""
 
     ### stuff that will be stored when saving state on exit
@@ -211,7 +238,7 @@ class TrackerState:
     """current location -- this should be initialized with a default value corresponding to the language"""
     # shouldn't be strictly necessary to save, but only assuming users start the tracker before opening the game
 
-    encounters: dict[loc_t, enc_t] = field(default_factory=dict, repr=True)
+    encounters: dict[loc_t, EncounterRegistry] = field(default_factory=dict, repr=True)
     """table of encounter data thus far -- stores canon encounter & frequencies"""
     # dict maintains insertion order as of Python 3.7, which is convenient for us because
     # we will only insert dict entries when a species is first encountered in that area
@@ -233,79 +260,100 @@ class TrackerState:
     """stack of actions that can be redone -- cleared on new action"""
 
 
+def debug_format(input) -> str:
+    """solely to make debugging easier"""
+    def helper(thing):
+        if isinstance(thing, ViewType):
+            out = thing.name.lower()
+        elif isinstance(thing, member_t):
+            out = f"{thing.nickname} ({thing.species}), {thing.location}"
+        elif isinstance(thing, action_t):
+            out = thing.__repr__()
+        elif isinstance(thing, tuple):
+            out = [x for x in thing if x != ""]  # filter out empty string
+            out = f"({", ".join(out)})"  # format as a one-liner
+        elif isinstance(thing, set):
+            out = list(map(helper, thing))
+        elif isinstance(thing, deque):
+            out = list(map(helper, thing))
+        else:
+            out = thing
+        return out
+
+    output = dict()
+    for key, value in asdict(input).items():
+        output[key] = helper(value)
+    # not sure why but there's an extra newline if we don't strip it
+    return yaml.dump({"TrackerState": output}, sort_keys=False).strip()
+
+
 def decorate_event(state: TrackerState, event: str):
     """
-    Decorates user input events with state-based context
+    Decorates user input events with state-based context -- also filters out invalid hotkey events.
+    Returns an action to be handled by the model.
     Note: state is readonly in this context (no mutation)
     """
     match (event, state.view_type):
 
-        # catching a member right now (singles)
-        case ("ToParty", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
-            spec = state.species[0]
-            if spec != "":
-                return ToParty((state.location, spec), True)
-        case ("ToBoxed", ViewType.WILD_SINGLE) if state.foes_left == 1:  # redundant if
-            spec = state.species[0]
-            if spec != "":
-                return ToBoxed((state.location, spec), True)
+        # # box encounters are autotracked
+        # case ("ToBoxed", ViewType.NICKNAME):
+        #     left, right = state.last_species
+        #     species = left if left != "" else right
+        #     nickname = state.last_nickname
+        #     if species != "" and nickname != "":  # most likely redundant
+        #         return ToBoxed((state.location, species, nickname), True)
 
-        # not catching a member--mark canon (singles)
-        case "FailEnc", ViewType.WILD_SINGLE if state.foes_left == 1:  # redundant if
-            spec = state.species[0]
-            if spec != "":
-                return FailCanonEnc((state.location, spec))
+        # mark a party encounter
+        case ("ToParty", ViewType.SUMMARY_PARTY):
+            left, right = state.last_species
+            species = left if left != "" else right
+            nickname = state.last_nickname
+            if species != "" and nickname != "":  # most likely redundant
+                return ToParty((state.location, species, nickname), True)
 
-        # catching a member right now (doubles)
-        case ("ToParty", ViewType.WILD_DOUBLE) if state.foes_left == 1:
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToParty((state.location, spec), True)
-        case ("ToBoxed", ViewType.WILD_DOUBLE) if state.foes_left == 1:
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToBoxed((state.location, spec), True)
+        # should only be applicable in soul link nuzlockes -- failed: after catch, before tracked
+        case ("FailEnc", ViewType.NICKNAME):
+            left, right = state.last_species
+            species = left if left != "" else right
+            if species != "":
+                return FailCanonEnc((state.location, species, None))
 
-        # not catching a member--mark canon (doubles)
-        case "FailEnc", ViewType.WILD_DOUBLE if state.foes_left == 1:
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return FailCanonEnc((state.location, spec))
+        # not catching a member--mark canon (in battle--singles)
+        case ("FailEnc", ViewType.WILD_SINGLE):
+            species = state.last_species[0]
+            if species != "":
+                return FailCanonEnc((state.location, species, None))
 
-        # just caught a member in the last battle
-        case ("ToParty", ViewType.OVERWORLD):
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToParty((state.location, spec), True)
-        case ("ToBoxed", ViewType.OVERWORLD):
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return ToBoxed((state.location, spec), True)
+        # not catching a member--mark canon (in battle--doubles)
+        case ("FailEnc", ViewType.WILD_DOUBLE):
+            left, right = state.last_species
+            species = left if left != "" else right
+            if species != "":
+                return FailCanonEnc((state.location, species, None))
 
-        # not catching a member--mark canon (last battle)
+        # not catching a member--mark canon (previous battle)
         case ("FailEnc", ViewType.OVERWORLD):
-            left, right = state.species
-            spec = left if left != "" else right
-            if spec != "":
-                return FailCanonEnc((state.location, spec))
+            left, right = state.last_species
+            species = left if left != "" else right
+            if species != "":
+                return FailCanonEnc((state.location, species, None))
 
-        # moving members around between party/box
-        case ("ToParty", ViewType.PC_BOX):
-            pass  # not ready for handling yet
+        # moving members around between box/party
         case ("ToBoxed", ViewType.PC_BOX):
+            dbg("NOT DECORATED", "not implemented yet")
+            pass  # not ready for handling yet
+        case ("ToParty", ViewType.PC_BOX):
+            dbg("NOT DECORATED", "not implemented yet")
             pass  # not ready for handling yet
 
         # member just died (in-battle)
         case ("ToDead", _):
+            dbg("NOT DECORATED", "not implemented yet")
             pass  # not ready for handling yet
 
-        # replace an encounter info (trade/token)
+        # replace/add an encounter info (trade/egg/token)
         case ("EditEnc", ViewType.PC_BOX):
+            dbg("NOT DECORATED", "not implemented yet")
             pass  # not ready for handling yet
 
 
@@ -319,7 +367,7 @@ italic = "\033[3m"
 
 def dbg(category, item, override=False):
     if override or (item is not None and item.__str__() != ""):
-        print(f"{bold}{category}: {reset} {item}")
+        print(f"{bold}{category}:\n{reset}{item}")
 
 
 class FilenameNotFoundError(Exception):
