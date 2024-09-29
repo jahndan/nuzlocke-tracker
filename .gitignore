@@ -1,7 +1,9 @@
 # personal config
 config.json
+# tracker save states
+*.pickle
 
-# anything that could possibly show up
+# anything else that could possibly show up
 .python-version
 .env
 .venv
