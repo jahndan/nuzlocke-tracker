@@ -31,7 +31,7 @@ dialog_palette = [
     numpy.array([0x59, 0x51, 0x51], dtype=numpy.uint8),
     numpy.array([0x00, 0x00, 0x00], dtype=numpy.uint8),  # used for bold
 ]
-dialog_charset = alphabet | numbers | set("&é")
+dialog_charset = alphabet | numbers | set("é’-&♂♀")
 dialog_chardata: char_dataset = palette_transfer(
     dialog_charset,
     normal_fontmap,
@@ -44,18 +44,24 @@ species_palette = [
     numpy.array([0xFD, 0xFD, 0xFD], dtype=numpy.uint8),
     numpy.array([0xFF, 0xFF, 0xFF], dtype=numpy.uint8),  # used for bold
 ]
-species_charset = alphabet | set("2♂♀’-")
+species_charset = alphabet | numbers | set("é’-&♂♀")
 species_chardata: char_dataset = palette_transfer(
     species_charset,
     normal_fontmap,
     species_palette,
 )
 
+if not dialog_charset.issuperset(species_charset):
+    print("dialog charset needs to contain all characters in the species charset")
+    # because we use the dialog box to autotrack nicknames
+    raise SystemExit
+
+
 # something that uses bold_fontmap (like level, gender)
 # etc ...
 
 display_palette = locations_palette  # borrowing this palette
-display_charset = alphabet | numbers | set("’(),")  # add punctuation
+display_charset = alphabet | numbers | set("é’-(),♂♀")  # some additional punctuation
 display_chardata = palette_transfer(
     display_charset,
     normal_fontmap,
